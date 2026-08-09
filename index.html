@@ -628,10 +628,10 @@ window.openTxModal = (txId) => {
       </div>
       <div class="field"><label>สถานที่ (ไม่บังคับ)</label>
         <input id="tPlace" maxlength="120" placeholder="เช่น Lotus, Shopee" value="${editingTx && editingTx.place ? esc(editingTx.place) : ""}"></div>
-      ${editingTx ? `
+      ${editingTx && editingTx.paid ? `
       <div class="field"><label>สถานะการจ่าย</label>
         <label class="paidtoggle">
-          <input type="checkbox" id="tPaid" ${editingTx.paid ? "checked" : ""}>
+          <input type="checkbox" id="tPaid" checked>
           <span>จ่ายแล้ว<small>เอาเครื่องหมายถูกออกแล้วกดบันทึก เพื่อยกเลิกการจ่าย</small></span>
         </label>
       </div>` : ""}
@@ -697,7 +697,7 @@ async function saveTx(e) {
     place: $("tPlace").value.trim() || null,
     category: pickedCat,
   };
-  if (editingTx) payload.paid = $("tPaid").checked; // ยกเลิก/ยืนยันการจ่ายได้จากหน้าแก้ไข
+  if (editingTx && $("tPaid")) payload.paid = $("tPaid").checked; // หน้าแก้ไขใช้ "ยกเลิกการจ่าย" ได้อย่างเดียว — การจ่ายต้องผ่านปุ่มจ่ายบิลเท่านั้น
   const q = editingTx
     ? sb.from("transactions").update(payload).eq("id", editingTx.id)
     : sb.from("transactions").insert({ ...payload, card_id: view.cardId });
@@ -711,17 +711,10 @@ window.openCard = (id) => { view = { name: "detail", cardId: id }; expandedTx = 
 window.backHome = () => { view = { name: "cards", cardId: null }; expandedTx = null; render(); };
 window.logout = async () => { await sb.auth.signOut(); };
 
-window.togglePaid = async (id, paid) => {
-  // ติ๊กในแถวใช้ "จ่าย" ได้อย่างเดียว — การยกเลิกการจ่ายต้องทำผ่านหน้าแก้ไข
-  if (!paid) {
-    alert('หากต้องการยกเลิกการจ่าย ให้กดที่รายการ → "✏️ แก้ไข" → เอาเครื่องหมายถูกออก → บันทึก');
-    return;
-  }
-  const t = txs.find((x) => x.id === id);
-  if (t) t.paid = paid;
-  render();
-  const { error } = await sb.from("transactions").update({ paid }).eq("id", id);
-  if (error) { alert("อัปเดตไม่สำเร็จ: " + error.message); await loadData(); render(); }
+window.togglePaid = (id, paid) => {
+  // เครื่องหมายถูกในแถวเป็นตัวแสดงสถานะเท่านั้น — จ่ายได้ทางเดียวคือปุ่ม "จ่ายบิล" → เลือกรายการ → บันทึกการจ่าย
+  if (paid) alert('การจ่ายทำได้ทางเดียว: กดปุ่ม "💳 จ่ายบิล" → เลือกรายการ → กด "บันทึกการจ่าย"');
+  else alert('หากต้องการยกเลิกการจ่าย ให้กดที่รายการ → "✏️ แก้ไข" → เอาเครื่องหมายถูกออก → บันทึก');
 };
 
 window.toggleExpand = (id) => { expandedTx = expandedTx === id ? null : id; render(); };
@@ -754,7 +747,7 @@ function updPayUI() {
   const total = txs.filter((t) => paySel.has(t.id)).reduce((s, t) => s + Number(t.amount), 0);
   $("payTotal").textContent = `เลือก ${paySel.size} รายการ · รวม ฿${money(total)}`;
   const btn = $("payConfirmBtn");
-  btn.textContent = paySel.size ? `✓ ยืนยันจ่าย ฿${money(total)}` : "ยังไม่ได้เลือกรายการ";
+  btn.textContent = paySel.size ? `✓ บันทึกการจ่าย ฿${money(total)}` : "ยังไม่ได้เลือกรายการ";
   btn.disabled = paySel.size === 0;
 }
 window.togglePaySel = (id) => {
