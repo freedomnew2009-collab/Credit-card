@@ -4,8 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#4652c9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="จดบัตร">
 <title>จดบัตรเครดิต — บันทึกรายการใช้จ่าย</title>
 <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -207,11 +213,57 @@
   @keyframes sp { to { transform: rotate(360deg); } }
   .setupbox { line-height: 1.7; font-size: .9rem; }
   .setupbox code { background: var(--bg); padding: 2px 7px; border-radius: 6px; font-size: .82rem; }
+
+  /* ---------- calculator ---------- */
+  .calc { margin-top: 8px; background: var(--bg); border-radius: 14px; padding: 10px; }
+  .calc-preview { text-align: right; font-size: .85rem; color: var(--muted); min-height: 1.3em; padding: 0 6px 6px; font-weight: 500; }
+  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .calc-grid button {
+    font-family: inherit; font-size: 1.15rem; padding: 12px 0;
+    border: none; border-radius: 10px; background: #fff; color: var(--ink);
+    cursor: pointer; box-shadow: 0 1px 3px rgba(35,38,59,.08); touch-action: manipulation;
+  }
+  .calc-grid button:active { transform: scale(.94); }
+  .calc-grid .op { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .calc-grid .eq { background: var(--accent); color: #fff; grid-column: span 2; font-weight: 600; }
+  .calc-grid .cl { background: var(--red-soft); color: var(--red); grid-column: span 2; font-size: .95rem; }
+
+  /* ---------- install banner ---------- */
+  .install-banner {
+    position: fixed; left: 12px; right: 12px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    max-width: 536px; margin: 0 auto; z-index: 60;
+    background: #23263b; color: #fff; border-radius: 16px;
+    padding: 14px 16px; display: none; align-items: center; gap: 12px;
+    box-shadow: 0 10px 30px rgba(20,22,40,.4);
+    animation: slideup .3s ease;
+  }
+  @keyframes slideup { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .install-banner.show { display: flex; }
+  .install-banner img { width: 40px; height: 40px; border-radius: 10px; }
+  .install-banner .txt { flex: 1; min-width: 0; }
+  .install-banner .t1 { font-size: .88rem; font-weight: 600; }
+  .install-banner .t2 { font-size: .74rem; opacity: .8; line-height: 1.45; }
+  .install-banner .t2 .ic { display: inline-block; }
+  .install-banner .close {
+    background: none; border: none; color: #fff; opacity: .6;
+    font-size: 1.2rem; cursor: pointer; padding: 4px 6px; align-self: flex-start;
+  }
 </style>
 </head>
 <body>
 <div class="wrap" id="app">
   <div class="loading"><div class="spin"></div>กำลังโหลด…</div>
+</div>
+
+<div class="install-banner" id="installBanner">
+  <img src="icons/icon-192.png" alt="">
+  <div class="txt">
+    <div class="t1">ติดตั้ง "จดบัตร" เป็นแอป</div>
+    <div class="t2" id="installHint">ใช้งานเต็มจอ เปิดเร็ว เหมือนแอปจริง</div>
+  </div>
+  <button class="btn btn-primary btn-sm" id="installBtn">ติดตั้ง</button>
+  <button class="close" id="installClose">×</button>
 </div>
 
 <script>
@@ -226,7 +278,19 @@ let editingTx = null;
 let editingCard = null;
 let pickedColor = "#5b6ee8";
 
-const COLORS = ["#5b6ee8", "#8b5cf6", "#0ea5b7", "#14a06a", "#e8842c", "#d9435f", "#2d3250", "#b8860b"];
+const COLORS = ["#5b6ee8", "#8b5cf6", "#0ea5b7", "#14a06a", "#e8842c", "#d9435f", "#2d3250", "#b8860b", "#c0c7d1"];
+
+// สีอ่อน (เช่น สีเงิน) ต้องใช้ตัวหนังสือเข้มถึงจะอ่านออก
+function isLightColor(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150;
+}
+function cardStyle(color) {
+  const c = color || "#5b6ee8";
+  const ink = isLightColor(c) ? "color:#2b3040" : "color:#fff";
+  return `background:linear-gradient(135deg, ${esc(c)}, ${esc(c)}cc); ${ink}`;
+}
 const $ = (id) => document.getElementById(id);
 const app = $("app");
 
@@ -363,7 +427,7 @@ function renderCards() {
     const unpaid = cardUnpaid(c.id);
     const cnt = txs.filter((t) => t.card_id === c.id).length;
     return `
-    <div class="cc" style="background:linear-gradient(135deg, ${esc(c.color)}, ${esc(c.color)}cc)" onclick="openCard('${c.id}')">
+    <div class="cc" style="${cardStyle(c.color)}" onclick="openCard('${c.id}')">
       <div class="chip"></div>
       <div class="name">${esc(c.name)}</div>
       <div class="meta">${c.statement_day ? "ตัดรอบทุกวันที่ " + c.statement_day : "รอบเดือนปฏิทิน"} · ${cnt} รายการ</div>
@@ -428,7 +492,7 @@ function renderDetail() {
       <button class="btn btn-ghost btn-sm" onclick="openCardModal('${card.id}')">แก้ไขบัตร</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="delCard('${card.id}')">ลบบัตร</button>
     </div>
-    <div class="cc" style="background:linear-gradient(135deg, ${esc(card.color)}, ${esc(card.color)}cc); cursor:default">
+    <div class="cc" style="${cardStyle(card.color)}; cursor:default">
       <div class="chip"></div>
       <div class="name">${esc(card.name)}</div>
       <div class="meta">${card.statement_day ? "ตัดรอบทุกวันที่ " + card.statement_day : "รอบเดือนปฏิทิน"}</div>
@@ -515,8 +579,19 @@ window.openTxModal = (txId) => {
         <input type="date" id="tDate" required value="${editingTx ? editingTx.tx_date : ymd(new Date())}"></div>
       <div class="field"><label>ชื่อรายการ</label>
         <input id="tName" required maxlength="120" placeholder="เช่น ค่าอาหาร, เติมน้ำมัน" value="${editingTx ? esc(editingTx.name) : ""}"></div>
-      <div class="field"><label>ราคา (บาท)</label>
-        <input type="number" id="tAmount" required step="0.01" min="0.01" inputmode="decimal" placeholder="0.00" value="${editingTx ? editingTx.amount : ""}"></div>
+      <div class="field"><label>ราคา (บาท) — แตะเพื่อเปิดเครื่องคิดเลข</label>
+        <input id="tAmount" readonly inputmode="none" placeholder="0.00" value="${editingTx ? editingTx.amount : ""}" onclick="openCalc()">
+        <div class="calc" id="calc" style="display:none">
+          <div class="calc-preview" id="calcPrev"></div>
+          <div class="calc-grid">
+            <button type="button" onclick="calcKey('7')">7</button><button type="button" onclick="calcKey('8')">8</button><button type="button" onclick="calcKey('9')">9</button><button type="button" class="op" onclick="calcKey('÷')">÷</button>
+            <button type="button" onclick="calcKey('4')">4</button><button type="button" onclick="calcKey('5')">5</button><button type="button" onclick="calcKey('6')">6</button><button type="button" class="op" onclick="calcKey('×')">×</button>
+            <button type="button" onclick="calcKey('1')">1</button><button type="button" onclick="calcKey('2')">2</button><button type="button" onclick="calcKey('3')">3</button><button type="button" class="op" onclick="calcKey('−')">−</button>
+            <button type="button" onclick="calcKey('0')">0</button><button type="button" onclick="calcKey('.')">.</button><button type="button" class="op" onclick="calcKey('⌫')">⌫</button><button type="button" class="op" onclick="calcKey('+')">+</button>
+            <button type="button" class="cl" onclick="calcKey('C')">ล้าง (C)</button><button type="button" class="eq" onclick="calcKey('=')">=</button>
+          </div>
+        </div>
+      </div>
       <div class="field"><label>สถานที่ (ไม่บังคับ)</label>
         <input id="tPlace" maxlength="120" placeholder="เช่น Lotus, Shopee" value="${editingTx && editingTx.place ? esc(editingTx.place) : ""}"></div>
       <div class="btnrow">
@@ -527,12 +602,47 @@ window.openTxModal = (txId) => {
   $("modalBg").classList.add("open");
   $("txForm").onsubmit = saveTx;
 };
+
+/* ---------- calculator ---------- */
+function evalExpr(s) {
+  if (!s) return null;
+  const e = String(s).replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
+  if (!/^[\d+\-*/.]+$/.test(e)) return null;
+  try {
+    const r = Function('"use strict";return (' + e + ")")();
+    return typeof r === "number" && isFinite(r) ? Math.round(r * 100) / 100 : null;
+  } catch { return null; }
+}
+function updCalcPrev() {
+  const v = $("tAmount").value;
+  const prev = $("calcPrev");
+  if (/[+×÷−*/-]/.test(v.slice(1))) {
+    const r = evalExpr(v);
+    prev.textContent = r != null ? "= " + money(r) : "…";
+  } else prev.textContent = v || "0";
+}
+window.openCalc = () => { $("calc").style.display = "block"; updCalcPrev(); };
+window.calcKey = (k) => {
+  const inp = $("tAmount");
+  let v = inp.value;
+  if (k === "C") v = "";
+  else if (k === "⌫") v = v.slice(0, -1);
+  else if (k === "=") {
+    const r = evalExpr(v);
+    if (r != null) { v = String(r); $("calc").style.display = "none"; }
+  } else v += k;
+  inp.value = v;
+  updCalcPrev();
+};
+
 async function saveTx(e) {
   e.preventDefault();
+  const amount = evalExpr($("tAmount").value);
+  if (amount == null || amount <= 0) return alert("กรุณาใส่ราคาให้ถูกต้อง (กด = เพื่อคำนวณผลก่อนบันทึกได้)");
   const payload = {
     tx_date: $("tDate").value,
     name: $("tName").value.trim(),
-    amount: Number($("tAmount").value),
+    amount,
     place: $("tPlace").value.trim() || null,
   };
   const q = editingTx
@@ -600,6 +710,46 @@ window.exportCSV = (cardId) => {
   URL.revokeObjectURL(a.href);
 };
 window.closeModal = closeModal;
+
+/* ---------- PWA: install as app ---------- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+(function installUI() {
+  const banner = $("installBanner"), btn = $("installBtn"), hint = $("installHint");
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const dismissed = localStorage.getItem("installDismissed") === "1";
+  let deferredPrompt = null;
+
+  const hide = () => banner.classList.remove("show");
+  $("installClose").onclick = () => { hide(); localStorage.setItem("installDismissed", "1"); };
+
+  if (isStandalone || dismissed) return;
+
+  if (isIOS) {
+    // iOS/iPadOS: Safari ไม่มี install prompt — แนะนำวิธีเพิ่มลงหน้าจอโฮมแทน
+    btn.style.display = "none";
+    hint.innerHTML = 'กดปุ่มแชร์ <span class="ic">&#x2B06;&#xFE0F;</span> ด้านล่างของ Safari แล้วเลือก <b>"เพิ่มไปยังหน้าจอโฮม"</b>';
+    setTimeout(() => banner.classList.add("show"), 2500);
+    return;
+  }
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    banner.classList.add("show");
+  });
+  btn.onclick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    hide();
+  };
+  window.addEventListener("appinstalled", hide);
+})();
 
 /* ---------- boot ---------- */
 (async function boot() {
