@@ -140,15 +140,6 @@
 
   /* ---------- detail ---------- */
   .backrow { display: flex; align-items: center; gap: 4px; margin-bottom: 12px; }
-  .cyclenav {
-    display: flex; align-items: center; justify-content: space-between;
-    background: var(--card-bg); border-radius: 14px; padding: 8px 10px;
-    box-shadow: var(--shadow); margin-bottom: 12px;
-  }
-  .cyclenav .lbl { font-weight: 500; font-size: .95rem; text-align: center; }
-  .cyclenav .sub { display: block; font-size: .72rem; color: var(--muted); font-weight: 400; }
-  .cyclenav button { border: none; background: var(--bg); width: 38px; height: 38px; border-radius: 11px; font-size: 1.1rem; cursor: pointer; color: var(--ink); }
-
   .txlist { margin-top: 14px; }
   .tx {
     background: var(--card-bg); border-radius: 14px; padding: 12px 14px;
@@ -308,7 +299,7 @@ let sb = null;
 let session = null;
 let cards = [];
 let txs = [];
-let view = { name: "cards", cardId: null, cycleOffset: 0 };
+let view = { name: "cards", cardId: null };
 let expandedTx = null;
 let paySel = new Set();
 let editingTx = null;
@@ -354,34 +345,6 @@ function authErrTh(m) {
   if (/rate limit/i.test(m)) return "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่";
   if (/not confirmed/i.test(m)) return "อีเมลนี้ยังไม่ได้ยืนยัน กรุณาเช็กกล่องจดหมาย";
   return "เกิดข้อผิดพลาด: " + m;
-}
-
-/* ---------- billing cycle ---------- */
-function clampDay(y, m, d) {
-  const last = new Date(y, m + 1, 0).getDate();
-  return new Date(y, m, Math.min(d, last));
-}
-function cycleRange(card, offset) {
-  const today = new Date();
-  if (!card.statement_day) {
-    const base = new Date(today.getFullYear(), today.getMonth() + offset, 1);
-    const start = base;
-    const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
-    return { start, end, label: base.toLocaleDateString("th-TH", { month: "long", year: "numeric" }), sub: "รอบเดือนปฏิทิน" };
-  }
-  const d = card.statement_day;
-  let y = today.getFullYear(), m = today.getMonth();
-  const cutoffThis = clampDay(y, m, d);
-  if (ymd(today) > ymd(cutoffThis)) m += 1;
-  m += offset;
-  const end = clampDay(y, m, d);
-  const prevEnd = clampDay(y, m - 1, d);
-  const start = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), prevEnd.getDate() + 1);
-  return { start, end, label: "รอบตัด " + thDateFull(end), sub: thDateFull(start) + " – " + thDateFull(end) };
-}
-function txsInCycle(cardId, range) {
-  const s = ymd(range.start), e = ymd(range.end);
-  return txs.filter((t) => t.card_id === cardId && t.tx_date >= s && t.tx_date <= e);
 }
 
 /* ---------- data ---------- */
@@ -465,8 +428,9 @@ function cardUnpaid(cardId) {
 
 function renderCards() {
   const totalUnpaid = txs.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
-  const monthRange = cycleRange({ statement_day: null }, 0);
-  const ms = ymd(monthRange.start), me = ymd(monthRange.end);
+  const now = new Date();
+  const ms = ymd(new Date(now.getFullYear(), now.getMonth(), 1));
+  const me = ymd(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   const monthTotal = txs.filter((t) => t.tx_date >= ms && t.tx_date <= me).reduce((s, t) => s + Number(t.amount), 0);
 
   let cardsHtml = cards.map((c) => {
@@ -476,7 +440,7 @@ function renderCards() {
     <div class="cc" style="${cardStyle(c.color)}" onclick="openCard('${c.id}')">
       <div class="chip"></div>
       <div class="name">${esc(c.name)}</div>
-      <div class="meta">${c.statement_day ? "ตัดรอบทุกวันที่ " + c.statement_day : "รอบเดือนปฏิทิน"} · ${cnt} รายการ</div>
+      <div class="meta">${cnt} รายการ</div>
       <div class="row">
         <div><div class="lbl">ค้างจ่ายทั้งหมด</div>
           ${unpaid > 0 ? `<div class="amt">฿${money(unpaid)}</div>` : `<div class="amt zero">จ่ายครบแล้ว ✓</div>`}
@@ -508,9 +472,8 @@ function renderCards() {
 
 function renderDetail() {
   const card = cards.find((c) => c.id === view.cardId);
-  if (!card) { view = { name: "cards", cardId: null, cycleOffset: 0 }; return render(); }
-  const range = cycleRange(card, view.cycleOffset);
-  const list = txsInCycle(card.id, range);
+  if (!card) { view = { name: "cards", cardId: null }; return render(); }
+  const list = txs.filter((t) => t.card_id === card.id);
   const total = list.reduce((s, t) => s + Number(t.amount), 0);
   const unpaid = list.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
   const unpaidCnt = list.filter((t) => !t.paid).length;
@@ -555,21 +518,16 @@ function renderDetail() {
     <div class="cc" style="${cardStyle(card.color)}; cursor:default">
       <div class="chip"></div>
       <div class="name">${esc(card.name)}</div>
-      <div class="meta">${card.statement_day ? "ตัดรอบทุกวันที่ " + card.statement_day : "รอบเดือนปฏิทิน"}</div>
+      <div class="meta">${list.length} รายการ</div>
       <div class="row">
-        <div><div class="lbl">ยอดรอบนี้</div><div class="amt">฿${money(total)}</div></div>
-        <div style="text-align:right"><div class="lbl">ค้างจ่ายรอบนี้</div><div class="amt">฿${money(unpaid)}</div></div>
+        <div><div class="lbl">ยอดทั้งหมด</div><div class="amt">฿${money(total)}</div></div>
+        <div style="text-align:right"><div class="lbl">ค้างจ่าย</div><div class="amt">฿${money(unpaid)}</div></div>
       </div>
-    </div>
-    <div class="cyclenav">
-      <button onclick="shiftCycle(-1)">‹</button>
-      <div class="lbl">${esc(range.label)}<span class="sub">${esc(range.sub)}</span></div>
-      <button onclick="shiftCycle(1)">›</button>
     </div>
     ${unpaidCnt > 0 ? `<button class="btn btn-green btn-block payall" onclick="openPayModal('${card.id}')">💳 จ่ายบิล (ค้าง ${unpaidCnt} รายการ · ฿${money(unpaid)})</button>` : ""}
     <div class="toolbar" style="margin-top:10px"><button class="btn btn-soft btn-sm" onclick="exportCSV('${card.id}')">⬇ ส่งออก CSV บัตรนี้</button></div>
     <div class="txlist">
-      ${rows || `<div class="empty"><div class="big">🧾</div>ไม่มีรายการในรอบนี้<br>กดปุ่ม + เพื่อจดรายการ</div>`}
+      ${rows || `<div class="empty"><div class="big">🧾</div>ยังไม่มีรายการ<br>กดปุ่ม + เพื่อจดรายการ</div>`}
     </div>
     <button class="fab" onclick="openTxModal()" title="จดรายการ">+</button>
     ${modalHtml()}`;
@@ -587,18 +545,11 @@ function closeModal() { $("modalBg").classList.remove("open"); }
 window.openCardModal = (cardId) => {
   editingCard = cardId ? cards.find((c) => c.id === cardId) : null;
   pickedColor = editingCard ? editingCard.color : COLORS[cards.length % COLORS.length];
-  const dayOpts = ['<option value="">รอบเดือนปฏิทิน (1 – สิ้นเดือน)</option>']
-    .concat(Array.from({ length: 31 }, (_, i) => {
-      const d = i + 1;
-      const sel = editingCard && editingCard.statement_day === d ? "selected" : "";
-      return `<option value="${d}" ${sel}>ตัดรอบทุกวันที่ ${d}</option>`;
-    })).join("");
   $("modalBody").innerHTML = `
     <h3>${editingCard ? "แก้ไขบัตร" : "เพิ่มบัตรใหม่"}</h3>
     <form id="cardForm">
       <div class="field"><label>ชื่อบัตร</label>
         <input id="cName" required maxlength="60" placeholder="เช่น KBank แมว, SCB Planet" value="${editingCard ? esc(editingCard.name) : ""}"></div>
-      <div class="field"><label>วันตัดรอบบิล</label><select id="cDay">${dayOpts}</select></div>
       <div class="field"><label>สีบัตร</label>
         <div class="colorpick">${COLORS.map((c) => `<div class="c ${c === pickedColor ? "sel" : ""}" style="background:${c}" onclick="pickColor(this,'${c}')"></div>`).join("")}</div>
       </div>
@@ -619,7 +570,6 @@ async function saveCard(e) {
   e.preventDefault();
   const payload = {
     name: $("cName").value.trim(),
-    statement_day: $("cDay").value ? Number($("cDay").value) : null,
     color: pickedColor,
   };
   const q = editingCard
@@ -725,9 +675,8 @@ async function saveTx(e) {
 }
 
 /* ---------- actions ---------- */
-window.openCard = (id) => { view = { name: "detail", cardId: id, cycleOffset: 0 }; expandedTx = null; render(); };
-window.backHome = () => { view = { name: "cards", cardId: null, cycleOffset: 0 }; expandedTx = null; render(); };
-window.shiftCycle = (n) => { view.cycleOffset += n; render(); };
+window.openCard = (id) => { view = { name: "detail", cardId: id }; expandedTx = null; render(); };
+window.backHome = () => { view = { name: "cards", cardId: null }; expandedTx = null; render(); };
 window.logout = async () => { await sb.auth.signOut(); };
 
 window.togglePaid = async (id, paid) => {
@@ -742,13 +691,11 @@ window.toggleExpand = (id) => { expandedTx = expandedTx === id ? null : id; rend
 
 /* ---------- pay bill: select items then confirm ---------- */
 window.openPayModal = (cardId) => {
-  const card = cards.find((c) => c.id === cardId);
-  const range = cycleRange(card, view.cycleOffset);
-  const list = txsInCycle(cardId, range).filter((t) => !t.paid);
+  const list = txs.filter((t) => t.card_id === cardId && !t.paid);
   if (!list.length) return;
   paySel = new Set(list.map((t) => t.id)); // เริ่มต้นเลือกทุกรายการ
   $("modalBody").innerHTML = `
-    <h3>💳 เลือกรายการที่จะจ่าย — ${esc(range.label)}</h3>
+    <h3>💳 เลือกรายการที่จะจ่าย</h3>
     <div class="paylist">
       ${list.map((t) => `
       <div class="payrow sel" id="pay-${t.id}" onclick="togglePaySel('${t.id}')">
@@ -800,7 +747,7 @@ window.delCard = async (id) => {
   if (!confirm(`ลบบัตร "${card.name}" และรายการทั้งหมด ${cnt} รายการ? ข้อมูลจะหายถาวร`)) return;
   const { error } = await sb.from("cards").delete().eq("id", id);
   if (error) return alert("ลบไม่สำเร็จ: " + error.message);
-  view = { name: "cards", cardId: null, cycleOffset: 0 };
+  view = { name: "cards", cardId: null };
   await loadData(); render();
 };
 
@@ -869,8 +816,8 @@ if ("serviceWorker" in navigator) {
   sb.auth.onAuthStateChange(async (_ev, s) => {
     const wasIn = !!session;
     session = s;
-    if (s && !wasIn) { await loadData(); view = { name: "cards", cardId: null, cycleOffset: 0 }; render(); }
-    if (!s && wasIn) { cards = []; txs = []; view = { name: "cards", cardId: null, cycleOffset: 0 }; render(); }
+    if (s && !wasIn) { await loadData(); view = { name: "cards", cardId: null }; render(); }
+    if (!s && wasIn) { cards = []; txs = []; view = { name: "cards", cardId: null }; render(); }
   });
 })();
 </script>
