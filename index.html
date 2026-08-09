@@ -145,7 +145,14 @@
     background: var(--card-bg); border-radius: 14px; padding: 12px 14px;
     margin-bottom: 9px; box-shadow: var(--shadow);
   }
-  .tx.paid { opacity: .62; }
+  .tx.paid { background: var(--green-soft); }
+  .tx.paid .n { text-decoration: line-through; color: #3d6b55; }
+  .tx.paid .d { color: #6b9c86; }
+  .tx.paid .a { color: var(--green); }
+  .tx.paid .txcat { background: #fff; }
+  .paidtoggle { display: flex; align-items: center; gap: 10px; font-size: .9rem; cursor: pointer; padding: 4px 0; }
+  .paidtoggle input { width: 22px; height: 22px; accent-color: var(--green); cursor: pointer; }
+  .paidtoggle small { display: block; color: var(--muted); font-size: .74rem; }
   .txrow { display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .chev { color: var(--muted); font-size: .75rem; transition: transform .2s; }
   .tx.open .chev { transform: rotate(180deg); }
@@ -177,7 +184,6 @@
   .catpick .cp.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 500; }
   .tx .info { flex: 1; min-width: 0; }
   .tx .n { font-weight: 500; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tx.paid .n { text-decoration: line-through; }
   .tx .d { font-size: .74rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tx .right { text-align: right; }
   .tx .a { font-weight: 600; font-size: .98rem; white-space: nowrap; }
@@ -614,6 +620,13 @@ window.openTxModal = (txId) => {
       </div>
       <div class="field"><label>สถานที่ (ไม่บังคับ)</label>
         <input id="tPlace" maxlength="120" placeholder="เช่น Lotus, Shopee" value="${editingTx && editingTx.place ? esc(editingTx.place) : ""}"></div>
+      ${editingTx ? `
+      <div class="field"><label>สถานะการจ่าย</label>
+        <label class="paidtoggle">
+          <input type="checkbox" id="tPaid" ${editingTx.paid ? "checked" : ""}>
+          <span>จ่ายแล้ว<small>เอาเครื่องหมายถูกออกแล้วกดบันทึก เพื่อยกเลิกการจ่าย</small></span>
+        </label>
+      </div>` : ""}
       <div class="btnrow">
         <button type="button" class="btn btn-soft" onclick="closeModal()">ยกเลิก</button>
         <button type="submit" class="btn btn-primary">${editingTx ? "บันทึก" : "จดรายการ"}</button>
@@ -670,6 +683,7 @@ async function saveTx(e) {
     place: $("tPlace").value.trim() || null,
     category: pickedCat,
   };
+  if (editingTx) payload.paid = $("tPaid").checked; // ยกเลิก/ยืนยันการจ่ายได้จากหน้าแก้ไข
   const q = editingTx
     ? sb.from("transactions").update(payload).eq("id", editingTx.id)
     : sb.from("transactions").insert({ ...payload, card_id: view.cardId });
@@ -684,6 +698,11 @@ window.backHome = () => { view = { name: "cards", cardId: null }; expandedTx = n
 window.logout = async () => { await sb.auth.signOut(); };
 
 window.togglePaid = async (id, paid) => {
+  // ติ๊กในแถวใช้ "จ่าย" ได้อย่างเดียว — การยกเลิกการจ่ายต้องทำผ่านหน้าแก้ไข
+  if (!paid) {
+    alert('หากต้องการยกเลิกการจ่าย ให้กดที่รายการ → "✏️ แก้ไข" → เอาเครื่องหมายถูกออก → บันทึก');
+    return;
+  }
   const t = txs.find((x) => x.id === id);
   if (t) t.paid = paid;
   render();
