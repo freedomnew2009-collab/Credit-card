@@ -307,6 +307,7 @@ let cards = [];
 let txs = [];
 let view = { name: "cards", cardId: null };
 let expandedTx = null;
+let sortDesc = true; // true = ใหม่ไปเก่า
 let paySel = new Set();
 let editingTx = null;
 let editingCard = null;
@@ -483,7 +484,10 @@ function renderCards() {
 function renderDetail() {
   const card = cards.find((c) => c.id === view.cardId);
   if (!card) { view = { name: "cards", cardId: null }; return render(); }
-  const list = txs.filter((t) => t.card_id === card.id);
+  const list = txs.filter((t) => t.card_id === card.id).slice().sort((a, b) => {
+    const cmp = a.tx_date.localeCompare(b.tx_date) || String(a.created_at || "").localeCompare(String(b.created_at || ""));
+    return sortDesc ? -cmp : cmp;
+  });
   const total = list.reduce((s, t) => s + Number(t.amount), 0);
   const unpaid = list.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
   const unpaidCnt = list.filter((t) => !t.paid).length;
@@ -535,7 +539,10 @@ function renderDetail() {
       </div>
     </div>
     ${unpaidCnt > 0 ? `<button class="btn btn-green btn-block payall" onclick="openPayModal('${card.id}')">💳 จ่ายบิล (ค้าง ${unpaidCnt} รายการ · ฿${money(unpaid)})</button>` : ""}
-    <div class="toolbar" style="margin-top:10px"><button class="btn btn-soft btn-sm" onclick="exportCSV('${card.id}')">⬇ ส่งออก CSV บัตรนี้</button></div>
+    <div class="toolbar" style="margin-top:10px">
+      <button class="btn btn-soft btn-sm" onclick="toggleSort()">⇅ เรียง: ${sortDesc ? "ใหม่ → เก่า" : "เก่า → ใหม่"}</button>
+      <button class="btn btn-soft btn-sm" onclick="exportCSV('${card.id}')">⬇ ส่งออก CSV บัตรนี้</button>
+    </div>
     <div class="txlist">
       ${rows || `<div class="empty"><div class="big">🧾</div>ยังไม่มีรายการ<br>กดปุ่ม + เพื่อจดรายการ</div>`}
     </div>
@@ -611,6 +618,7 @@ window.openTxModal = (txId) => {
             <button type="button" onclick="calcKey('0')">0</button><button type="button" onclick="calcKey('.')">.</button><button type="button" class="op" onclick="calcKey('⌫')">⌫</button><button type="button" class="op" onclick="calcKey('+')">+</button>
             <button type="button" class="cl" onclick="calcKey('C')">ล้าง (C)</button><button type="button" class="eq" onclick="calcKey('=')">=</button>
           </div>
+          <button type="button" class="btn btn-green btn-block" style="margin-top:10px" onclick="confirmCalcAmount()">✓ ใช้ยอดนี้</button>
         </div>
       </div>
       <div class="field"><label>หมวดหมู่</label>
@@ -666,10 +674,16 @@ window.calcKey = (k) => {
   else if (k === "⌫") v = v.slice(0, -1);
   else if (k === "=") {
     const r = evalExpr(v);
-    if (r != null) { v = String(r); $("calc").style.display = "none"; }
+    if (r != null) v = String(r);
   } else v += k;
   inp.value = v;
   updCalcPrev();
+};
+window.confirmCalcAmount = () => {
+  const r = evalExpr($("tAmount").value);
+  if (r == null || r <= 0) return alert("จำนวนไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
+  $("tAmount").value = String(r);
+  $("calc").style.display = "none";
 };
 
 async function saveTx(e) {
@@ -711,6 +725,7 @@ window.togglePaid = async (id, paid) => {
 };
 
 window.toggleExpand = (id) => { expandedTx = expandedTx === id ? null : id; render(); };
+window.toggleSort = () => { sortDesc = !sortDesc; render(); };
 
 /* ---------- pay bill: select items then confirm ---------- */
 window.openPayModal = (cardId) => {
