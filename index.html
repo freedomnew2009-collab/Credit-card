@@ -299,7 +299,7 @@ const S = {
   screen: 'home', activeCard: null, addMode: 'pad',
   pad: '', padCat: 'food', padCard: null, txName: '', txPlace: '', dayOffset: 0,
   calY: 0, calM: 0, calTarget: 'add',
-  query: '', filter: 'all', sortAsc: false,
+  query: '', filter: 'all', sortAsc: false, fYear: 'all', fMonth: 'all',
   editTx: null, paySel: new Set(), scanImg: null,
 };
 
@@ -569,8 +569,8 @@ function renderHome() {
     </div>
 
     <div style="display:flex; gap:9px; margin-top:4px; animation:fadeUp .6s .28s cubic-bezier(.2,.8,.2,1) both;">
-      ${[['＋','เพิ่มรายการ','add'],['✓','จ่ายบิล','cards'],['◷','ผ่อน 0%','plans']].map(q => `
-      <div onclick="go('${q[2]}')" class="raised" style="flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; padding:14px 8px; border-radius:16px; cursor:pointer; transition:.25s;">
+      ${[['＋','เพิ่มรายการ',"go('add')"],['✓','จ่ายบิล','openPaySheet()'],['◷','ผ่อน 0%',"go('plans')"]].map(q => `
+      <div onclick="${q[2]}" class="raised" style="flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; padding:14px 8px; border-radius:16px; cursor:pointer; transition:.25s;">
         <span style="font-size:20.5px; color:var(--gold);">${q[0]}</span>
         <span style="font-size:14px; color:var(--t2);">${q[1]}</span>
       </div>`).join('')}
@@ -646,6 +646,8 @@ function filteredRows() {
     if (f === 'unpaid' && t.paid) return false;
     if (f === 'paid' && !t.paid) return false;
     if (f !== 'all' && f !== 'unpaid' && f !== 'paid' && t.card_id !== f) return false;
+    if (S.fYear !== 'all' && t.tx_date.slice(0, 4) !== S.fYear) return false;
+    if (S.fMonth !== 'all' && t.tx_date.slice(5, 7) !== S.fMonth) return false;
     if (!q) return true;
     return (t.name + ' ' + (t.place || '') + ' ' + catLabel(t.category)).toLowerCase().indexOf(q) >= 0;
   });
@@ -653,6 +655,9 @@ function filteredRows() {
   return rows;
 }
 function renderList() {
+  const years = [...new Set(txs.map(t => t.tx_date.slice(0, 4)))].sort().reverse();
+  if (!years.length) years.push(String(new Date().getFullYear()));
+  const selStyle = (on) => `flex:1; appearance:none; -webkit-appearance:none; padding:10px 14px; border-radius:99px; font-size:15px; font-weight:500; cursor:pointer; outline:0; transition:.3s; background:${on ? 'var(--gold-tint-strong)' : 'var(--sunken)'}; border:1px solid ${on ? 'var(--gold-bd)' : 'var(--hair)'}; color:${on ? 'var(--gold-deep)' : 'var(--t1b)'};`;
   app.innerHTML = `
   <div style="padding:24px 22px 130px;" class="u-fadein">
     <div class="screen-title">รายการทั้งหมด</div>
@@ -660,10 +665,22 @@ function renderList() {
       <span style="font-size:17px; color:var(--t2);">⌕</span>
       <input id="qInput" value="${esc(S.query)}" placeholder="ค้นหาร้านค้า หรือหมวดหมู่" style="flex:1; background:transparent; border:0; outline:0; color:var(--t1b); font-size:17px;">
     </div>
+    <div style="margin-top:12px; display:flex; gap:8px;">
+      <select id="fYearSel" style="${selStyle(S.fYear !== 'all')}">
+        <option value="all" ${S.fYear === 'all' ? 'selected' : ''}>ทุกปี</option>
+        ${years.map(y => `<option value="${y}" ${S.fYear === y ? 'selected' : ''}>ปี ${Number(y) + 543}</option>`).join('')}
+      </select>
+      <select id="fMonthSel" style="${selStyle(S.fMonth !== 'all')}">
+        <option value="all" ${S.fMonth === 'all' ? 'selected' : ''}>ทุกเดือน</option>
+        ${THM_FULL.map((m, i) => { const v = String(i + 1).padStart(2, '0'); return `<option value="${v}" ${S.fMonth === v ? 'selected' : ''}>${m}</option>`; }).join('')}
+      </select>
+    </div>
     <div style="margin:14px -22px 0; padding:0 22px; display:flex; gap:8px; overflow-x:auto;" id="filterRow"></div>
     <div id="listResults"></div>
   </div>`;
   $('qInput').oninput = (e) => { S.query = e.target.value; updateListResults(); };
+  $('fYearSel').onchange = (e) => { S.fYear = e.target.value; renderList(); };
+  $('fMonthSel').onchange = (e) => { S.fMonth = e.target.value; renderList(); };
   updateListResults();
 }
 function updateListResults() {
@@ -1374,23 +1391,27 @@ window.deleteTx = async () => {
   closeSheet(); await loadData(); render();
 };
 
-/* จ่ายบิล: เลือกรายการ + ยืนยัน */
+/* จ่ายบิล: เลือกรายการ + ยืนยัน — ไม่ระบุบัตร = ค้างจ่ายทุกใบ (popup จากหน้าแรก) */
 window.openPaySheet = (cardId) => {
-  const list = txs.filter(t => t.card_id === cardId && !t.paid);
-  if (!list.length) return alert('บัตรใบนี้ไม่มีรายการค้างจ่าย');
+  const list = txs.filter(t => !t.paid && (!cardId || t.card_id === cardId));
+  if (!list.length) return alert(cardId ? 'บัตรใบนี้ไม่มีรายการค้างจ่าย' : 'ไม่มีรายการค้างจ่าย 🎉');
   S.paySel = new Set(list.map(t => t.id));
+  const payCard = cardId ? cardById(cardId) : null;
   openSheet(`
-    <div style="font-size:19px; font-weight:700; color:var(--t1b);">เลือกรายการที่จะจ่าย</div>
+    <div style="font-size:19px; font-weight:700; color:var(--t1b);">เลือกรายการที่จะจ่าย${payCard ? ' — ' + esc(payCard.bank || payCard.name) : ''}</div>
     <div style="margin-top:14px; max-height:44vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
-      ${list.map(t => `
+      ${list.map(t => { const tc = cardById(t.card_id); return `
       <div id="pay-${t.id}" onclick="togglePay('${t.id}')" style="display:flex; align-items:center; gap:11px; padding:11px 13px; border-radius:15px; border:1.5px solid rgba(46,125,85,.4); background:rgba(46,125,85,.07); cursor:pointer; transition:.22s;">
         <div class="payChk" style="width:24px; height:24px; flex:0 0 24px; border-radius:8px; background:#2E7D55; color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px;">✓</div>
         <div style="flex:1; min-width:0;">
           <div class="ellip" style="font-size:16px; font-weight:500; color:var(--t1b);">${esc(t.name)}</div>
-          <div style="font-size:13px; color:var(--t2);">${thShort(t.tx_date)}${t.place ? ' · ' + esc(t.place) : ''}</div>
+          <div style="font-size:13px; color:var(--t2); display:flex; align-items:center; gap:6px;">
+            <span class="ellip" style="min-width:0;">${thShort(t.tx_date)}${t.place ? ' · ' + esc(t.place) : ''}</span>
+            ${!cardId && tc ? `<span style="width:15px; height:10px; border-radius:2px; flex:0 0 auto; display:block; background:${skinOf(tc)};" title="${esc(tc.bank || tc.name)}"></span>` : ''}
+          </div>
         </div>
         <div class="tnum" style="font-size:16px; font-weight:600; color:var(--t1);">฿${money(t.amount, true)}</div>
-      </div>`).join('')}
+      </div>`; }).join('')}
     </div>
     <div id="payTotal" style="margin-top:12px; text-align:center; font-size:14.5px; color:var(--t2); font-weight:500;"></div>
     <div style="margin-top:12px; display:flex; gap:10px;">
