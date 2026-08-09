@@ -490,7 +490,7 @@ function renderHome() {
     const on = c.id === S.activeCard;
     const cyc = cycleOf(c);
     return `
-    <div onclick="pickActive('${c.id}')" style="position:relative; flex:0 0 296px; height:210px; border-radius:20px; overflow:hidden; scroll-snap-align:center; cursor:pointer; transition:transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .5s; transform:translateY(${on ? -6 : 0}px) scale(${on ? 1 : 0.955}); box-shadow:var(--card-shadow), 0 0 0 1px ${on ? 'rgba(150,116,45,.55)' : 'var(--hair)'};">
+    <div onclick="pickActive('${c.id}')" data-cid="${c.id}" style="position:relative; flex:0 0 296px; height:210px; border-radius:20px; overflow:hidden; scroll-snap-align:center; cursor:pointer; transition:transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .5s; transform:translateY(${on ? -6 : 0}px) scale(${on ? 1 : 0.955}); box-shadow:var(--card-shadow), 0 0 0 1px ${on ? 'rgba(150,116,45,.55)' : 'var(--hair)'};">
       <div style="position:absolute; inset:0; background:${skinOf(c)};"></div>
       <div style="position:absolute; inset:0; background:linear-gradient(115deg, rgba(255,255,255,0) 38%, rgba(255,255,255,.14) 48%, rgba(255,255,255,0) 58%);"></div>
       <div class="shimmer-el" style="animation-delay:${(i*1.4).toFixed(1)}s;"></div>
@@ -525,7 +525,7 @@ function renderHome() {
       <span style="font-size:28px;">＋</span><span style="font-size:16px;">เพิ่มบัตรใบแรก</span>
     </div>`;
 
-  const recent = txs.slice(0, 5);
+  const activeC = cardById(S.activeCard);
   app.innerHTML = `
   <div style="padding:26px 22px 130px;" class="u-fadein">
     <div class="u-fadeup" style="display:flex; align-items:flex-start; justify-content:space-between;">
@@ -564,7 +564,7 @@ function renderHome() {
       <span onclick="go('cards')" style="white-space:nowrap; font-size:15px; color:var(--gold); cursor:pointer;">จัดการบัตร ›</span>
     </div>
 
-    <div style="margin:12px -22px 0; padding:6px 22px 16px; display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory; animation:fadeUp .65s .22s cubic-bezier(.2,.8,.2,1) both;">
+    <div id="carousel" style="margin:12px -22px 0; padding:6px 22px 16px; display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory; animation:fadeUp .65s .22s cubic-bezier(.2,.8,.2,1) both;">
       ${carouselHtml}
     </div>
 
@@ -577,14 +577,29 @@ function renderHome() {
     </div>
 
     <div style="margin-top:28px; display:flex; align-items:center; justify-content:space-between; animation:fadeUp .6s .32s cubic-bezier(.2,.8,.2,1) both;">
-      <span class="eyebrow">รายการล่าสุด</span>
-      <span onclick="go('list')" style="white-space:nowrap; font-size:15px; color:var(--gold); cursor:pointer;">ดูทั้งหมด ›</span>
+      <span class="eyebrow">รายการล่าสุด<span id="recentCard" style="letter-spacing:.4px; text-transform:none;">${activeC ? ' · ' + esc(activeC.bank || activeC.name) : ''}</span></span>
+      <span onclick="goListForCard()" style="white-space:nowrap; font-size:15px; color:var(--gold); cursor:pointer;">ดูทั้งหมด ›</span>
     </div>
-    <div style="margin-top:12px; display:flex; flex-direction:column; gap:2px; animation:fadeUp .6s .36s cubic-bezier(.2,.8,.2,1) both;">
-      ${recent.length ? recent.map((t2, i) => txRowHtml(t2, i, false)).join('')
-        : `<div style="padding:34px 0; text-align:center; color:var(--t2); font-size:15.5px;">ยังไม่มีรายการ — กดแท็บ ＋ เพื่อเริ่มจด</div>`}
+    <div id="recentList" style="margin-top:12px; display:flex; flex-direction:column; gap:2px; animation:fadeUp .6s .36s cubic-bezier(.2,.8,.2,1) both;">
+      ${recentRowsHtml(S.activeCard)}
     </div>
   </div>`;
+
+  // เลื่อนบัตร → รายการล่าสุดเปลี่ยนตามบัตรที่อยู่กลางจอ
+  const car = $('carousel');
+  if (car && cards.length) {
+    const STEP = 310; // การ์ด 296 + ช่องว่าง 14
+    const idx = Math.max(0, cards.findIndex(c => c.id === S.activeCard));
+    if (idx > 0) car.scrollLeft = idx * STEP;
+    let scT = 0;
+    car.addEventListener('scroll', () => {
+      clearTimeout(scT);
+      scT = setTimeout(() => {
+        const i = Math.min(cards.length - 1, Math.max(0, Math.round(car.scrollLeft / STEP)));
+        if (cards[i] && cards[i].id !== S.activeCard) updateActiveCard(cards[i].id);
+      }, 120);
+    }, { passive: true });
+  }
 
   // hero count-up 1400ms ease-out
   cancelAnimationFrame(heroRAF);
@@ -602,7 +617,25 @@ function renderHome() {
     heroRAF = requestAnimationFrame(step);
   }
 }
-window.pickActive = (id) => { S.activeCard = id; S.padCard = id; renderHome(); };
+function recentRowsHtml(cardId) {
+  const list = (cardId ? txs.filter(t => t.card_id === cardId) : txs).slice(0, 5);
+  return list.length ? list.map((t, i) => txRowHtml(t, i, false)).join('')
+    : `<div style="padding:34px 0; text-align:center; color:var(--t2); font-size:15.5px;">ยังไม่มีรายการของบัตรใบนี้ — กดแท็บ ＋ เพื่อจด</div>`;
+}
+/* เปลี่ยนบัตรที่เลือกโดยไม่ re-render ทั้งหน้า (ตำแหน่งเลื่อนบัตรคงเดิม) */
+function updateActiveCard(id) {
+  S.activeCard = id; S.padCard = id;
+  document.querySelectorAll('#carousel [data-cid]').forEach(el => {
+    const on = el.dataset.cid === id;
+    el.style.transform = `translateY(${on ? -6 : 0}px) scale(${on ? 1 : 0.955})`;
+    el.style.boxShadow = `var(--card-shadow), 0 0 0 1px ${on ? 'rgba(150,116,45,.55)' : 'var(--hair)'}`;
+  });
+  const rl = $('recentList'); if (rl) rl.innerHTML = recentRowsHtml(id);
+  const rc = $('recentCard'); const c = cardById(id);
+  if (rc) rc.textContent = c ? ' · ' + (c.bank || c.name) : '';
+}
+window.pickActive = (id) => updateActiveCard(id);
+window.goListForCard = () => { S.filter = S.activeCard || 'all'; go('list'); };
 window.logout = async () => { if (confirm('ออกจากระบบ?')) await sb.auth.signOut(); };
 
 /* ---------- LIST ---------- */
