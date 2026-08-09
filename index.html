@@ -152,9 +152,19 @@
   .txlist { margin-top: 14px; }
   .tx {
     background: var(--card-bg); border-radius: 14px; padding: 12px 14px;
-    display: flex; align-items: center; gap: 12px; margin-bottom: 9px; box-shadow: var(--shadow);
+    margin-bottom: 9px; box-shadow: var(--shadow);
   }
   .tx.paid { opacity: .62; }
+  .txrow { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .chev { color: var(--muted); font-size: .75rem; transition: transform .2s; }
+  .tx.open .chev { transform: rotate(180deg); }
+  .txdetail { border-top: 1px dashed var(--line); margin-top: 11px; padding-top: 9px; }
+  .dl { display: flex; justify-content: space-between; font-size: .84rem; padding: 3.5px 0; color: var(--muted); }
+  .dl b { color: var(--ink); font-weight: 500; text-align: right; }
+  .stat-paid { color: var(--green) !important; }
+  .stat-unpaid { color: var(--red) !important; }
+  .dl-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .dl-actions .btn { flex: 1; }
   .tx .chk {
     width: 26px; height: 26px; min-width: 26px; border-radius: 8px;
     border: 2px solid var(--line); background: #fff; cursor: pointer;
@@ -162,17 +172,42 @@
     font-size: .9rem; color: #fff; transition: all .15s;
   }
   .tx.paid .chk { background: var(--green); border-color: var(--green); }
+  .tx .txcat {
+    font-size: 1.2rem; width: 36px; min-width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); border-radius: 11px;
+  }
+  .catpick { display: flex; gap: 8px; flex-wrap: wrap; }
+  .catpick .cp {
+    border: 1.5px solid var(--line); background: #fff; border-radius: 12px;
+    padding: 8px 12px; font-size: .85rem; cursor: pointer; font-family: inherit;
+    display: inline-flex; gap: 6px; align-items: center; color: var(--ink);
+  }
+  .catpick .cp.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 500; }
   .tx .info { flex: 1; min-width: 0; }
   .tx .n { font-weight: 500; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tx.paid .n { text-decoration: line-through; }
   .tx .d { font-size: .74rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tx .right { text-align: right; }
   .tx .a { font-weight: 600; font-size: .98rem; white-space: nowrap; }
-  .tx .actions { display: flex; gap: 2px; justify-content: flex-end; margin-top: 2px; }
-  .tx .actions button { border: none; background: none; color: var(--muted); font-size: .72rem; cursor: pointer; padding: 2px 5px; font-family: inherit; }
-  .tx .actions button:hover { color: var(--accent); }
 
   .payall { margin: 4px 0 2px; }
+  .paylist { max-height: 44vh; overflow-y: auto; margin-bottom: 10px; }
+  .payrow {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border: 1.5px solid var(--line); border-radius: 12px; margin-bottom: 8px; cursor: pointer;
+  }
+  .payrow.sel { border-color: var(--green); background: var(--green-soft); }
+  .payrow .chk {
+    width: 24px; height: 24px; min-width: 24px; border-radius: 7px;
+    border: 2px solid var(--line); background: #fff; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: .8rem;
+  }
+  .payrow.sel .chk { background: var(--green); border-color: var(--green); }
+  .payrow .pn { flex: 1; min-width: 0; font-size: .88rem; font-weight: 500; }
+  .payrow .pn small { display: block; font-size: .72rem; color: var(--muted); font-weight: 400; }
+  .payrow .pa { font-weight: 600; font-size: .9rem; white-space: nowrap; }
+  .paytotal { text-align: center; font-size: .86rem; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
 
   /* ---------- fab & modal ---------- */
   .fab {
@@ -274,11 +309,22 @@ let session = null;
 let cards = [];
 let txs = [];
 let view = { name: "cards", cardId: null, cycleOffset: 0 };
+let expandedTx = null;
+let paySel = new Set();
 let editingTx = null;
 let editingCard = null;
 let pickedColor = "#5b6ee8";
 
 const COLORS = ["#5b6ee8", "#8b5cf6", "#0ea5b7", "#14a06a", "#e8842c", "#d9435f", "#2d3250", "#b8860b", "#c0c7d1"];
+
+const CATS = [
+  { k: "food", icon: "🍔", label: "อาหาร" },
+  { k: "shopping", icon: "🛍️", label: "ช้อปปิ้ง" },
+  { k: "fuel", icon: "⛽", label: "น้ำมัน" },
+  { k: "other", icon: "📦", label: "อื่นๆ" },
+];
+const catOf = (k) => CATS.find((c) => c.k === k) || CATS[CATS.length - 1];
+let pickedCat = "other";
 
 // สีอ่อน (เช่น สีเงิน) ต้องใช้ตัวหนังสือเข้มถึงจะอ่านออก
 function isLightColor(hex) {
@@ -469,21 +515,35 @@ function renderDetail() {
   const unpaid = list.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
   const unpaidCnt = list.filter((t) => !t.paid).length;
 
-  const rows = list.map((t) => `
-    <div class="tx ${t.paid ? "paid" : ""}">
-      <div class="chk" onclick="togglePaid('${t.id}', ${!t.paid})">${t.paid ? "✓" : ""}</div>
-      <div class="info">
-        <div class="n">${esc(t.name)}</div>
-        <div class="d">${thDate(t.tx_date)}${t.place ? " · " + esc(t.place) : ""}</div>
-      </div>
-      <div class="right">
-        <div class="a">฿${money(t.amount)}</div>
-        <div class="actions">
-          <button onclick="openTxModal('${t.id}')">แก้ไข</button>
-          <button onclick="delTx('${t.id}')">ลบ</button>
+  const rows = list.map((t) => {
+    const cat = catOf(t.category);
+    const open = expandedTx === t.id;
+    return `
+    <div class="tx ${t.paid ? "paid" : ""}${open ? " open" : ""}">
+      <div class="txrow" onclick="toggleExpand('${t.id}')">
+        <div class="chk" onclick="event.stopPropagation();togglePaid('${t.id}', ${!t.paid})">${t.paid ? "✓" : ""}</div>
+        <div class="txcat" title="${cat.label}">${cat.icon}</div>
+        <div class="info">
+          <div class="n">${esc(t.name)}</div>
+          <div class="d">${thDate(t.tx_date)}${t.place ? " · " + esc(t.place) : ""}</div>
         </div>
+        <div class="right"><div class="a">฿${money(t.amount)}</div></div>
+        <div class="chev">▼</div>
       </div>
-    </div>`).join("");
+      ${open ? `
+      <div class="txdetail">
+        <div class="dl"><span>วันที่</span><b>${thDateFull(new Date(t.tx_date + "T00:00:00"))}</b></div>
+        <div class="dl"><span>หมวดหมู่</span><b>${cat.icon} ${cat.label}</b></div>
+        <div class="dl"><span>สถานที่</span><b>${t.place ? esc(t.place) : "—"}</b></div>
+        <div class="dl"><span>ราคา</span><b>฿${money(t.amount)}</b></div>
+        <div class="dl"><span>สถานะ</span><b class="${t.paid ? "stat-paid" : "stat-unpaid"}">${t.paid ? "จ่ายแล้ว ✓" : "ยังไม่จ่าย"}</b></div>
+        <div class="dl-actions">
+          <button class="btn btn-soft btn-sm" onclick="openTxModal('${t.id}')">✏️ แก้ไข</button>
+          <button class="btn btn-danger-soft btn-sm" onclick="delTx('${t.id}')">🗑 ลบ</button>
+        </div>
+      </div>` : ""}
+    </div>`;
+  }).join("");
 
   app.innerHTML = `
     <div class="backrow">
@@ -506,7 +566,7 @@ function renderDetail() {
       <div class="lbl">${esc(range.label)}<span class="sub">${esc(range.sub)}</span></div>
       <button onclick="shiftCycle(1)">›</button>
     </div>
-    ${unpaidCnt > 0 ? `<button class="btn btn-green btn-block payall" onclick="payAll('${card.id}')">✓ จ่ายทั้งรอบนี้ (${unpaidCnt} รายการ · ฿${money(unpaid)})</button>` : ""}
+    ${unpaidCnt > 0 ? `<button class="btn btn-green btn-block payall" onclick="openPayModal('${card.id}')">💳 จ่ายบิล (ค้าง ${unpaidCnt} รายการ · ฿${money(unpaid)})</button>` : ""}
     <div class="toolbar" style="margin-top:10px"><button class="btn btn-soft btn-sm" onclick="exportCSV('${card.id}')">⬇ ส่งออก CSV บัตรนี้</button></div>
     <div class="txlist">
       ${rows || `<div class="empty"><div class="big">🧾</div>ไม่มีรายการในรอบนี้<br>กดปุ่ม + เพื่อจดรายการ</div>`}
@@ -572,6 +632,7 @@ async function saveCard(e) {
 
 window.openTxModal = (txId) => {
   editingTx = txId ? txs.find((t) => t.id === txId) : null;
+  pickedCat = editingTx ? (editingTx.category || "other") : "other";
   $("modalBody").innerHTML = `
     <h3>${editingTx ? "แก้ไขรายการ" : "จดรายการใหม่"}</h3>
     <form id="txForm">
@@ -592,6 +653,11 @@ window.openTxModal = (txId) => {
           </div>
         </div>
       </div>
+      <div class="field"><label>หมวดหมู่</label>
+        <div class="catpick" id="catPick">
+          ${CATS.map((c) => `<button type="button" class="cp ${c.k === pickedCat ? "sel" : ""}" onclick="pickCat('${c.k}')">${c.icon} ${c.label}</button>`).join("")}
+        </div>
+      </div>
       <div class="field"><label>สถานที่ (ไม่บังคับ)</label>
         <input id="tPlace" maxlength="120" placeholder="เช่น Lotus, Shopee" value="${editingTx && editingTx.place ? esc(editingTx.place) : ""}"></div>
       <div class="btnrow">
@@ -601,6 +667,10 @@ window.openTxModal = (txId) => {
     </form>`;
   $("modalBg").classList.add("open");
   $("txForm").onsubmit = saveTx;
+};
+window.pickCat = (k) => {
+  pickedCat = k;
+  document.querySelectorAll("#catPick .cp").forEach((b, i) => b.classList.toggle("sel", CATS[i].k === k));
 };
 
 /* ---------- calculator ---------- */
@@ -644,6 +714,7 @@ async function saveTx(e) {
     name: $("tName").value.trim(),
     amount,
     place: $("tPlace").value.trim() || null,
+    category: pickedCat,
   };
   const q = editingTx
     ? sb.from("transactions").update(payload).eq("id", editingTx.id)
@@ -654,8 +725,8 @@ async function saveTx(e) {
 }
 
 /* ---------- actions ---------- */
-window.openCard = (id) => { view = { name: "detail", cardId: id, cycleOffset: 0 }; render(); };
-window.backHome = () => { view = { name: "cards", cardId: null, cycleOffset: 0 }; render(); };
+window.openCard = (id) => { view = { name: "detail", cardId: id, cycleOffset: 0 }; expandedTx = null; render(); };
+window.backHome = () => { view = { name: "cards", cardId: null, cycleOffset: 0 }; expandedTx = null; render(); };
 window.shiftCycle = (n) => { view.cycleOffset += n; render(); };
 window.logout = async () => { await sb.auth.signOut(); };
 
@@ -667,17 +738,53 @@ window.togglePaid = async (id, paid) => {
   if (error) { alert("อัปเดตไม่สำเร็จ: " + error.message); await loadData(); render(); }
 };
 
-window.payAll = async (cardId) => {
+window.toggleExpand = (id) => { expandedTx = expandedTx === id ? null : id; render(); };
+
+/* ---------- pay bill: select items then confirm ---------- */
+window.openPayModal = (cardId) => {
   const card = cards.find((c) => c.id === cardId);
   const range = cycleRange(card, view.cycleOffset);
   const list = txsInCycle(cardId, range).filter((t) => !t.paid);
   if (!list.length) return;
-  if (!confirm(`ยืนยันจ่ายทั้งรอบ ${list.length} รายการ รวม ฿${money(list.reduce((s, t) => s + Number(t.amount), 0))}?`)) return;
-  const { error } = await sb.from("transactions").update({ paid: true })
-    .eq("card_id", cardId).eq("paid", false)
-    .gte("tx_date", ymd(range.start)).lte("tx_date", ymd(range.end));
-  if (error) return alert("อัปเดตไม่สำเร็จ: " + error.message);
-  await loadData(); render();
+  paySel = new Set(list.map((t) => t.id)); // เริ่มต้นเลือกทุกรายการ
+  $("modalBody").innerHTML = `
+    <h3>💳 เลือกรายการที่จะจ่าย — ${esc(range.label)}</h3>
+    <div class="paylist">
+      ${list.map((t) => `
+      <div class="payrow sel" id="pay-${t.id}" onclick="togglePaySel('${t.id}')">
+        <div class="chk">✓</div>
+        <div class="pn">${esc(t.name)}<small>${thDate(t.tx_date)}${t.place ? " · " + esc(t.place) : ""}</small></div>
+        <div class="pa">฿${money(t.amount)}</div>
+      </div>`).join("")}
+    </div>
+    <div class="paytotal" id="payTotal"></div>
+    <div class="btnrow">
+      <button type="button" class="btn btn-soft" onclick="closeModal()">ยกเลิก</button>
+      <button type="button" class="btn btn-green" id="payConfirmBtn" onclick="confirmPay()"></button>
+    </div>`;
+  $("modalBg").classList.add("open");
+  updPayUI();
+};
+function updPayUI() {
+  const total = txs.filter((t) => paySel.has(t.id)).reduce((s, t) => s + Number(t.amount), 0);
+  $("payTotal").textContent = `เลือก ${paySel.size} รายการ · รวม ฿${money(total)}`;
+  const btn = $("payConfirmBtn");
+  btn.textContent = paySel.size ? `✓ ยืนยันจ่าย ฿${money(total)}` : "ยังไม่ได้เลือกรายการ";
+  btn.disabled = paySel.size === 0;
+}
+window.togglePaySel = (id) => {
+  if (paySel.has(id)) paySel.delete(id); else paySel.add(id);
+  const el = document.getElementById("pay-" + id);
+  el.classList.toggle("sel", paySel.has(id));
+  el.querySelector(".chk").textContent = paySel.has(id) ? "✓" : "";
+  updPayUI();
+};
+window.confirmPay = async () => {
+  if (!paySel.size) return;
+  const btn = $("payConfirmBtn"); btn.disabled = true;
+  const { error } = await sb.from("transactions").update({ paid: true }).in("id", [...paySel]);
+  if (error) { btn.disabled = false; return alert("อัปเดตไม่สำเร็จ: " + error.message); }
+  closeModal(); await loadData(); render();
 };
 
 window.delTx = async (id) => {
@@ -700,8 +807,8 @@ window.delCard = async (id) => {
 window.exportCSV = (cardId) => {
   const list = cardId ? txs.filter((t) => t.card_id === cardId) : txs;
   const cardName = (id) => (cards.find((c) => c.id === id) || {}).name || "";
-  const rows = [["บัตร", "วันที่", "รายการ", "ราคา", "สถานที่", "สถานะ"]]
-    .concat(list.map((t) => [cardName(t.card_id), t.tx_date, t.name, t.amount, t.place || "", t.paid ? "จ่ายแล้ว" : "ยังไม่จ่าย"]));
+  const rows = [["บัตร", "วันที่", "รายการ", "หมวดหมู่", "ราคา", "สถานที่", "สถานะ"]]
+    .concat(list.map((t) => [cardName(t.card_id), t.tx_date, t.name, catOf(t.category).label, t.amount, t.place || "", t.paid ? "จ่ายแล้ว" : "ยังไม่จ่าย"]));
   const csv = "\uFEFF" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));

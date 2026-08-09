@@ -20,9 +20,13 @@ create table if not exists public.transactions (
   name text not null,
   amount numeric(12,2) not null,
   place text,
+  category text not null default 'other',
   paid boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- สำหรับฐานข้อมูลที่สร้างไว้ก่อนหน้า: เพิ่มคอลัมน์หมวดหมู่ (รันซ้ำได้)
+alter table public.transactions add column if not exists category text not null default 'other';
 
 create index if not exists idx_cards_user on public.cards(user_id);
 create index if not exists idx_tx_user on public.transactions(user_id);
