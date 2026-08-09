@@ -1,0 +1,26 @@
+name: Setup Supabase Database
+
+# รันสคีมาฐานข้อมูล (supabase-schema.sql) กับโปรเจกต์ Supabase
+# ต้องตั้ง secret ชื่อ SUPABASE_DB_URL ก่อน (Settings → Secrets and variables → Actions)
+# ใช้ connection string แบบ "Session pooler" จากปุ่ม Connect ใน Supabase Dashboard
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply schema
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_DB_URL — ไปที่ Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase-schema.sql
+          echo "--- Tables created: ---"
+          psql "$DB_URL" -c "\dt public.*"
+          echo "Schema applied successfully ✓"
