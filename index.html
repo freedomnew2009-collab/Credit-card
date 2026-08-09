@@ -276,11 +276,22 @@ const CATS = [
   { k:'fuel', label:'น้ำมัน' }, { k:'other', label:'อื่นๆ' }
 ];
 const CATCOLOR = { food:'#C8A96A', clothes:'#7F9FCF', shopee:'#CF7F8C', shoes:'#2E7D55', bag:'#B08CD8', fuel:'#A9640F', other:'#6A6A76', shopping:'#8A6A28' };
+/* ลายบัตรตามสีแบรนด์จริงของธนาคารไทย (สีอ้างอิงจากแบรนด์จริง) */
 const SKINS = [
-  'linear-gradient(140deg,#2B2418 0%,#4A3C22 34%,#171208 68%,#3A2F1B 100%)',
-  'linear-gradient(140deg,#101A2E 0%,#1E2E4E 38%,#0A101C 72%,#16233C 100%)',
-  'linear-gradient(140deg,#2A2C30 0%,#4C5057 36%,#191B1E 70%,#3A3E44 100%)',
-  'linear-gradient(140deg,#2A121A 0%,#4E2030 36%,#180A10 70%,#3C1826 100%)'
+  { n:'บรอนซ์ทอง', g:'linear-gradient(140deg,#2B2418 0%,#4A3C22 34%,#171208 68%,#3A2F1B 100%)' },
+  { n:'กรมท่า', g:'linear-gradient(140deg,#101A2E 0%,#1E2E4E 38%,#0A101C 72%,#16233C 100%)' },
+  { n:'กราไฟต์', g:'linear-gradient(140deg,#2A2C30 0%,#4C5057 36%,#191B1E 70%,#3A3E44 100%)' },
+  { n:'พลัมแดง', g:'linear-gradient(140deg,#2A121A 0%,#4E2030 36%,#180A10 70%,#3C1826 100%)' },
+  { n:'เขียว กสิกร', g:'linear-gradient(140deg,#01331D 0%,#04A94E 44%,#013B21 76%,#0A8A40 100%)' },
+  { n:'ม่วง ไทยพาณิชย์', g:'linear-gradient(140deg,#241040 0%,#5B3A8E 42%,#180A2E 74%,#42277A 100%)' },
+  { n:'เหลือง กรุงศรี', g:'linear-gradient(140deg,#3A2E00 0%,#E6B800 45%,#2E2400 76%,#A38200 100%)' },
+  { n:'ฟ้า กรุงไทย', g:'linear-gradient(140deg,#00293D 0%,#00A6E6 45%,#00202F 76%,#0084B8 100%)' },
+  { n:'น้ำเงิน บัวหลวง', g:'linear-gradient(140deg,#071433 0%,#1E4598 44%,#050E24 76%,#17356F 100%)' },
+  { n:'น้ำเงิน ttb', g:'linear-gradient(140deg,#001244 0%,#0050F0 48%,#000D30 78%,#0038A8 100%)' },
+  { n:'ชมพู ออมสิน', g:'linear-gradient(140deg,#400024 0%,#EC008C 46%,#330020 78%,#B00068 100%)' },
+  { n:'น้ำเงิน UOB', g:'linear-gradient(140deg,#000A20 0%,#12398A 46%,#000818 78%,#0B2A66 100%)' },
+  { n:'ม่วงแดง AEON', g:'linear-gradient(140deg,#26001A 0%,#B6007A 46%,#1D0016 78%,#8A005C 100%)' },
+  { n:'ดำพรีเมียม', g:'linear-gradient(160deg,#26262A 0%,#0B0B0D 55%,#1C1C20 100%)' },
 ];
 const PLAN_ICONS = ['💻','📱','👜','✈️','🛋️','📺','🎮','💍','⌚','📦'];
 
@@ -299,7 +310,11 @@ const money = (n, dec) => Number(n || 0).toLocaleString('en-US', { minimumFracti
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const catLabel = (k) => (CATS.find(c => c.k === k) || { label:'อื่นๆ' }).label;
 const catIcon = (k) => ICON[k] || '📦';
-const skinOf = (c) => SKINS[(c && c.skin || 0) % SKINS.length];
+const skinOf = (c) => SKINS[(c && c.skin || 0) % SKINS.length].g;
+/* บรรทัดกลางบัตร: มีเลข 4 ตัว → •••• 8842 / ไม่มี → ชื่อที่ตั้งเอง */
+const cardMid = (c) => c.last4
+  ? `<span class="tnum" style="letter-spacing:2.6px;">•••• ${esc(c.last4)}</span>`
+  : `<span class="ellip" style="letter-spacing:.6px; font-weight:500;">${esc(c.name)}</span>`;
 const cardById = (id) => cards.find(c => c.id === id);
 
 function thShort(dstr) { const d = new Date(dstr + 'T00:00:00'); return d.getDate() + ' ' + THM[d.getMonth()]; }
@@ -308,29 +323,13 @@ function dateFromOffset(o) { const d = new Date(); d.setHours(0,0,0,0); d.setDat
 function greet() { const h = new Date().getHours(); return h < 12 ? 'สวัสดีตอนเช้า' : h < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น'; }
 function userName() { return session ? session.user.email.split('@')[0] : ''; }
 
-/* รอบบิล: ปิดรอบวันที่ statement_day; due เดือนถัดไปเมื่อ due_day <= statement_day */
+/* รอบบิล: ปิดรอบวันที่ statement_day */
 function cycleOf(card) {
-  const sd = card.statement_day, dd = card.due_day;
+  const sd = card.statement_day;
   const t = new Date(), m = t.getMonth();
-  if (!sd) return { cycleRange: 'เดือน ' + THM[m], dueText: dd ? dd + ' ' + THM[m] : '–' };
+  if (!sd) return { cycleRange: 'เดือน ' + THM[m] };
   const sDay = sd >= 28 ? 1 : sd + 1, sM = sd >= 28 ? m : (m + 11) % 12;
-  const r = { cycleRange: sDay + ' ' + THM[sM] + ' – ' + sd + ' ' + THM[m], dueText: '–' };
-  if (dd) r.dueText = dd + ' ' + THM[dd <= sd ? (m + 1) % 12 : m];
-  return r;
-}
-function nextDue() {
-  const t = new Date(); t.setHours(0,0,0,0);
-  let best = null;
-  cards.forEach((c) => {
-    if (!c.due_day) return;
-    for (let k = 0; k < 2; k++) {
-      const last = new Date(t.getFullYear(), t.getMonth() + k + 1, 0).getDate();
-      const d = new Date(t.getFullYear(), t.getMonth() + k, Math.min(c.due_day, last));
-      if (d >= t) { if (!best || d < best) best = d; break; }
-    }
-  });
-  if (!best) return null;
-  return { label: best.getDate() + ' ' + THM[best.getMonth()], days: Math.round((best - t) / 86400000) };
+  return { cycleRange: sDay + ' ' + THM[sM] + ' – ' + sd + ' ' + THM[m] };
 }
 const unpaidOf = (id) => txs.filter(t => t.card_id === id && !t.paid).reduce((a,t) => a + Number(t.amount), 0);
 function monthTotal(offset) {
@@ -477,9 +476,10 @@ function renderHome() {
   const diff = thisM - lastM;
   const pct = lastM > 0 ? Math.abs(diff) / lastM * 100 : 0;
   const down = diff <= 0;
-  const due = nextDue();
   const totalUnpaid = cards.reduce((a,c) => a + unpaidOf(c.id), 0);
   const t = new Date();
+  const ms = ymd(new Date(t.getFullYear(), t.getMonth(), 1)), me = ymd(new Date(t.getFullYear(), t.getMonth() + 1, 0));
+  const paidMonth = txs.filter(x => x.paid && x.tx_date >= ms && x.tx_date <= me).reduce((a,x) => a + Number(x.amount), 0);
 
   const deltaHtml = lastM > 0 ? `
     <span style="display:inline-flex; align-items:center; gap:5px; font-size:15px; color:${down ? 'var(--success)' : 'var(--warn)'}; background:${down ? 'rgba(46,125,85,.1)' : 'rgba(169,100,15,.1)'}; border:1px solid ${down ? 'rgba(46,125,85,.2)' : 'rgba(169,100,15,.2)'}; padding:3px 9px; border-radius:99px;">${down ? '↓' : '↑'} ${pct.toFixed(1)}%</span>
@@ -503,7 +503,7 @@ function renderHome() {
           <div style="flex:0 0 auto; width:34px; height:25px; border-radius:5px; background:linear-gradient(140deg, rgba(255,255,255,.85), rgba(255,255,255,.35)); opacity:.8;"></div>
         </div>
         <div>
-          <div class="tnum" style="font-size:15px; letter-spacing:2.6px; opacity:.78;">•••• ${esc(c.last4 || '····')}</div>
+          <div style="font-size:15px; opacity:.78; min-width:0; display:flex;">${cardMid(c)}</div>
           <div style="margin-top:10px; padding-top:11px; border-top:1px solid rgba(255,255,255,.22); display:flex; align-items:flex-end; gap:12px;">
             <div style="flex:1 1 auto; min-width:0;">
               <div style="font-size:12.5px; letter-spacing:1.2px; opacity:.72; line-height:1.5; white-space:nowrap;">ยอดค้างชำระ</div>
@@ -515,7 +515,6 @@ function renderHome() {
             <div style="flex:0 0 auto; text-align:right; padding-left:12px; border-left:1px solid rgba(255,255,255,.2);">
               <div style="font-size:12px; letter-spacing:.8px; opacity:.6; line-height:1.5; white-space:nowrap;">รอบบิล</div>
               <div class="tnum" style="font-size:13.5px; font-weight:500; line-height:1.45; opacity:.95; white-space:nowrap;">${cyc.cycleRange}</div>
-              <div style="margin-top:4px; font-size:12.5px; line-height:1.45; opacity:.65; white-space:nowrap;">ครบกำหนด <span style="opacity:1; font-weight:600;">${cyc.dueText}</span></div>
             </div>
           </div>
         </div>
@@ -555,11 +554,8 @@ function renderHome() {
         <div class="tnum" style="margin-top:5px; font-size:22.5px; font-weight:500; color:var(--t1);">฿${money(totalUnpaid)}</div>
       </div>
       <div class="raised" style="flex:1; padding:14px 15px; border-radius:18px;">
-        <div style="font-size:14px; color:var(--t2); letter-spacing:.4px;">ครบกำหนดถัดไป</div>
-        <div style="margin-top:5px; display:flex; align-items:baseline; gap:6px; white-space:nowrap;">
-          <span style="font-size:22.5px; font-weight:500; color:var(--t1);">${due ? due.label : '–'}</span>
-          ${due ? `<span style="font-size:14px; color:var(--warn);">${due.days === 0 ? 'วันนี้' : 'อีก ' + due.days + ' วัน'}</span>` : ''}
-        </div>
+        <div style="font-size:14px; color:var(--t2); letter-spacing:.4px;">จ่ายแล้วเดือนนี้</div>
+        <div class="tnum" style="margin-top:5px; font-size:22.5px; font-weight:500; color:var(--success);">฿${money(paidMonth)}</div>
       </div>
     </div>
 
@@ -712,7 +708,7 @@ function renderAddPanel() {
         ${chipRow(CATS.map(c => ({ ...c, icon: ICON[c.k] })), S.padCat, 'pickPadCat')}
       </div>
       <div style="margin-top:14px; display:flex; gap:8px; overflow-x:auto;" id="cardChips">
-        ${cards.map(c => `<button class="chip ${S.padCard === c.id ? 'sel' : ''}" style="padding:7px 12px 7px 8px; font-size:14.5px;" onclick="pickPadCard('${c.id}')"><span style="width:22px; height:15px; border-radius:3px; display:block; background:${skinOf(c)};"></span>${esc(c.bank || c.name)} ·${esc(c.last4 || '····')}</button>`).join('')
+        ${cards.map(c => `<button class="chip ${S.padCard === c.id ? 'sel' : ''}" style="padding:7px 12px 7px 8px; font-size:14.5px;" onclick="pickPadCard('${c.id}')"><span style="width:22px; height:15px; border-radius:3px; display:block; background:${skinOf(c)};"></span>${esc(c.bank || c.name)}${c.last4 ? ' ·' + esc(c.last4) : ''}</button>`).join('')
         || `<button class="chip sel" onclick="openCardSheet()">＋ เพิ่มบัตรก่อน</button>`}
       </div>
       <div style="margin-top:16px; display:flex; flex-direction:column; gap:9px;">
@@ -761,11 +757,11 @@ function renderAddPanel() {
       </div>
       <input type="file" id="scanFile" accept="image/*" capture="environment" style="display:none;">
       <div style="margin-top:16px; padding:16px; border-radius:18px; background:rgba(150,116,45,.07); border:1px solid rgba(150,116,45,.2);">
-        <div style="display:flex; align-items:center; gap:8px; font-size:14.5px; color:var(--gold);"><span style="width:6px; height:6px; border-radius:50%; background:var(--gold); display:block; animation:glowPulse 1.2s infinite;"></span>${S.scanImg ? 'แนบสลิปแล้ว — กรอกยอดเพื่อบันทึก' : 'ยังไม่มีสลิป — กรอกข้อมูลเองด้านล่างได้เลย'}</div>
+        <div id="scanStatus" style="display:flex; align-items:center; gap:8px; font-size:14.5px; color:var(--gold);"><span style="width:6px; height:6px; border-radius:50%; background:var(--gold); display:block; animation:glowPulse 1.2s infinite;"></span>${S.scanImg ? 'แนบสลิปแล้ว — ตรวจสอบข้อมูลแล้วกดบันทึก' : 'แตะกรอบด้านบนเพื่อถ่าย/เลือกรูปสลิป ระบบจะอ่านยอดให้อัตโนมัติ'}</div>
         <div style="margin-top:12px; display:flex; flex-direction:column; gap:9px;">
           <div class="fieldrow" style="background:transparent;"><label>ร้านค้า</label><input id="scName" placeholder="เช่น Central Chidlom"></div>
           <div class="fieldrow" style="background:transparent;"><label>จำนวนเงิน</label><input id="scAmount" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="0.00"></div>
-          <div class="fieldrow" style="background:transparent;"><label>บัตร</label><select id="scCard">${cards.map(c => `<option value="${c.id}" ${c.id === S.padCard ? 'selected' : ''}>${esc(c.bank || c.name)} ···· ${esc(c.last4 || '')}</option>`).join('')}</select></div>
+          <div class="fieldrow" style="background:transparent;"><label>บัตร</label><select id="scCard">${cards.map(c => `<option value="${c.id}" ${c.id === S.padCard ? 'selected' : ''}>${esc(c.bank || c.name)}${c.last4 ? ' ···· ' + esc(c.last4) : ''}</option>`).join('')}</select></div>
         </div>
       </div>
       <button class="cta" style="margin-top:18px;" onclick="saveScan()">ยืนยันและบันทึก</button>
@@ -773,7 +769,7 @@ function renderAddPanel() {
     $('scanFile').onchange = (e) => {
       const f = e.target.files[0]; if (!f) return;
       const r = new FileReader();
-      r.onload = () => { S.scanImg = r.result; renderAddPanel(); };
+      r.onload = () => { S.scanImg = r.result; renderAddPanel(); runOcr(r.result); };
       r.readAsDataURL(f);
     };
   }
@@ -832,6 +828,68 @@ window.savePad = async () => {
   if (!ok) return;
   fireSaved(`฿${money(amount, true)} · ${name} · ${thShortY(dateFromOffset(S.dayOffset))}`);
 };
+/* OCR อ่านสลิปด้วย Tesseract (ไฟล์หลักอยู่ใน repo, ข้อมูลภาษาโหลดครั้งแรกจากอินเทอร์เน็ต) */
+function setScanStatus(msg) {
+  const el = $('scanStatus');
+  if (el) el.innerHTML = `<span style="width:6px; height:6px; border-radius:50%; background:var(--gold); display:block; animation:glowPulse 1.2s infinite;"></span>${msg}`;
+}
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('โหลดสคริปต์ไม่สำเร็จ'));
+    document.head.appendChild(s);
+  });
+}
+function parseSlip(text) {
+  let amount = null;
+  const kw = text.match(/(?:จำนวนเงิน|จำนวน|ยอดรวม|ยอดสุทธิ|รวมทั้งสิ้น|รวม|Amount|Total|THB)[^0-9]{0,12}(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/i);
+  if (kw) amount = parseFloat(kw[1].replace(/,/g, ''));
+  if (!amount) {
+    const all = [...text.matchAll(/(\d{1,3}(?:,\d{3})*\.\d{2})/g)].map(m => parseFloat(m[1].replace(/,/g, '')));
+    if (all.length) amount = Math.max(...all);
+  }
+  let merchant = '';
+  const lines = text.split(/\n/).map(s => s.trim()).filter(Boolean);
+  for (const L of lines) {
+    if (/[A-Za-zก-๙]{3}/.test(L) && L.length >= 4 && L.length <= 60 &&
+        !/(ธนาคาร|โอนเงิน|สแกน|สำเร็จ|เรียบร้อย|slip|verify|ref|เลขที่|รหัส|อ้างอิง|จำนวน|ยอด|บาท|baht|thb|วันที่|เวลา|k ?plus|krungthai|next|make|พร้อมเพย์|promptpay|qr|ค่าธรรมเนียม|fee|จาก|ไปยัง|บัญชี|x{2,}|\*{2,})/i.test(L)) {
+      merchant = L.replace(/[|_=+~^]/g, '').trim(); break;
+    }
+  }
+  return { amount, merchant };
+}
+let ocrBusy = false;
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+async function runOcr(dataUrl) {
+  if (ocrBusy) return;
+  ocrBusy = true;
+  let worker = null;
+  try {
+    setScanStatus('กำลังเตรียมตัวอ่านสลิป…');
+    if (!window.Tesseract) await loadScript('vendor/tesseract.min.js');
+    const base = new URL('vendor/', location.href).href;
+    setScanStatus('กำลังอ่านสลิป… 0%');
+    worker = await withTimeout(Tesseract.createWorker(['tha', 'eng'], 1, {
+      workerPath: base + 'worker.min.js',
+      corePath: base,
+      langPath: base + 'lang',
+      logger: (m) => { if (m.status === 'recognizing text') setScanStatus('กำลังอ่านสลิป… ' + Math.round(m.progress * 100) + '%'); },
+    }), 90000);
+    const { data } = await withTimeout(worker.recognize(dataUrl), 90000);
+    await worker.terminate();
+    worker = null;
+    const p = parseSlip(data.text || '');
+    if ($('scAmount') && p.amount) $('scAmount').value = p.amount;
+    if ($('scName') && p.merchant && !$('scName').value) $('scName').value = p.merchant;
+    if (p.amount) setScanStatus(`อ่านสลิปสำเร็จ · ความมั่นใจ ${Math.round(data.confidence || 0)}% — ตรวจสอบแล้วกดบันทึก`);
+    else setScanStatus('อ่านรูปได้แต่ไม่พบยอดเงิน — กรอกยอดเองด้านล่างได้เลย');
+  } catch (e) {
+    if (worker) try { worker.terminate(); } catch (_) {}
+    setScanStatus('อ่านอัตโนมัติไม่สำเร็จ (ครั้งแรกต้องต่ออินเทอร์เน็ตเพื่อโหลดข้อมูลภาษา) — กรอกข้อมูลเองด้านล่างได้เลย');
+  }
+  ocrBusy = false;
+}
+
 window.saveScan = async () => {
   const amount = parseFloat($('scAmount').value);
   const name = $('scName').value.trim();
@@ -1067,7 +1125,7 @@ function renderCards() {
                 <div class="tnum" style="margin-top:2px; font-size:17px; font-weight:600; white-space:nowrap;">฿${money(lim)}</div>
               </div>
             </div>
-            <div class="tnum" style="font-size:15px; letter-spacing:2.4px; opacity:.8; white-space:nowrap;">•••• ${esc(c.last4 || '····')}</div>
+            <div style="font-size:15px; opacity:.8; min-width:0; display:flex;">${cardMid(c)}</div>
           </div>
         </div>
         <div style="padding:16px 17px;">
@@ -1091,7 +1149,6 @@ function renderCards() {
           <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--hair); display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;">
             <div style="display:flex; flex-direction:column; gap:5px; font-size:14.5px; white-space:nowrap;">
               <span style="color:var(--t2);">รอบบิล <span style="color:var(--t1); font-weight:500;">${cyc.cycleRange}</span></span>
-              <span style="color:var(--t2);">ครบกำหนด <span style="color:var(--warn); font-weight:600;">${cyc.dueText}</span></span>
             </div>
             <div style="display:flex; gap:7px;">
               <span class="pillbtn" onclick="openCardSheet('${c.id}')">แก้ไข</span>
@@ -1123,7 +1180,7 @@ function renderPlans() {
             <div style="width:40px; height:40px; flex:0 0 40px; border-radius:13px; background:var(--gold-tint); border:1px solid rgba(150,116,45,.22); display:flex; align-items:center; justify-content:center; font-size:20.5px;">${p.icon}</div>
             <div style="min-width:0;">
               <div class="ellip" style="font-size:17.5px; color:var(--t1b);">${esc(p.name)}</div>
-              <div style="margin-top:2px; font-size:14px; color:var(--t2);">${card ? esc(card.bank || card.name) + ' ···· ' + esc(card.last4 || '') : '—'} · เริ่ม ${THM[sd.getMonth()]} ${String(sd.getFullYear() + 543).slice(-2)}</div>
+              <div style="margin-top:2px; font-size:14px; color:var(--t2);">${card ? esc(card.bank || card.name) + (card.last4 ? ' ···· ' + esc(card.last4) : '') : '—'} · เริ่ม ${THM[sd.getMonth()]} ${String(sd.getFullYear() + 543).slice(-2)}</div>
             </div>
           </div>
           <div style="text-align:right; flex:0 0 auto;">
@@ -1349,14 +1406,17 @@ window.openCardSheet = (cardId) => {
     <div style="margin-top:16px; display:flex; flex-direction:column; gap:9px;">
       <div class="fieldrow"><label>ธนาคาร</label><input id="cBank" maxlength="16" value="${editCard ? esc(editCard.bank) : ''}" placeholder="เช่น KTC, SCB"></div>
       <div class="fieldrow"><label>ชื่อบัตร</label><input id="cName" required maxlength="40" value="${editCard ? esc(editCard.name) : ''}" placeholder="เช่น Signature Reserve"></div>
-      <div class="fieldrow"><label>เลข 4 ตัวท้าย</label><input id="cLast4" maxlength="4" inputmode="numeric" pattern="\\d*" value="${editCard ? esc(editCard.last4) : ''}" placeholder="8842"></div>
+      <div class="fieldrow"><label>เลข 4 ตัวท้าย</label><input id="cLast4" maxlength="4" inputmode="numeric" pattern="\\d*" value="${editCard ? esc(editCard.last4) : ''}" placeholder="ไม่ใส่ก็ได้ — จะแสดงชื่อบัตรแทน"></div>
       <div class="fieldrow"><label>วงเงิน (฿)</label><input id="cLimit" type="number" min="0" step="1000" inputmode="numeric" value="${editCard ? Number(editCard.credit_limit || 0) : 50000}"></div>
       <div class="fieldrow"><label>วันสรุปยอด</label><select id="cStmt">${dayOpts(editCard ? editCard.statement_day : null)}</select></div>
-      <div class="fieldrow"><label>วันครบกำหนด</label><select id="cDue">${dayOpts(editCard ? editCard.due_day : null)}</select></div>
       <div>
-        <div style="font-size:14.5px; font-weight:600; color:var(--t2); margin:6px 0 8px;">ลายบัตร</div>
-        <div style="display:flex; gap:10px;" id="skinRow">
-          ${SKINS.map((s, i) => `<div onclick="pickSkin(${i})" data-skin="${i}" style="width:56px; height:38px; border-radius:8px; background:${s}; cursor:pointer; border:2px solid ${i === pickedSkin ? 'var(--gold)' : 'transparent'}; box-shadow:var(--card-shadow);"></div>`).join('')}
+        <div style="font-size:14.5px; font-weight:600; color:var(--t2); margin:6px 0 8px;">ลายบัตร — สีตามธนาคารจริง</div>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;" id="skinRow">
+          ${SKINS.map((s, i) => `
+          <div onclick="pickSkin(${i})" data-skin="${i}" style="cursor:pointer; text-align:center;">
+            <div class="skinSw" style="height:38px; border-radius:8px; background:${s.g}; border:2px solid ${i === pickedSkin ? 'var(--gold)' : 'transparent'}; box-shadow:var(--card-shadow);"></div>
+            <div class="ellip" style="margin-top:4px; font-size:11.5px; color:var(--t2);">${s.n}</div>
+          </div>`).join('')}
         </div>
       </div>
     </div>
@@ -1367,7 +1427,9 @@ window.openCardSheet = (cardId) => {
 };
 window.pickSkin = (i) => {
   pickedSkin = i;
-  document.querySelectorAll('#skinRow [data-skin]').forEach(el => { el.style.borderColor = Number(el.dataset.skin) === i ? 'var(--gold)' : 'transparent'; });
+  document.querySelectorAll('#skinRow [data-skin]').forEach(el => {
+    el.querySelector('.skinSw').style.borderColor = Number(el.dataset.skin) === i ? 'var(--gold)' : 'transparent';
+  });
 };
 window.saveCard = async () => {
   const name = $('cName').value.trim();
@@ -1376,7 +1438,6 @@ window.saveCard = async () => {
     name, bank: $('cBank').value.trim().toUpperCase(), last4: $('cLast4').value.trim(),
     credit_limit: Number($('cLimit').value) || 0,
     statement_day: $('cStmt').value ? Number($('cStmt').value) : null,
-    due_day: $('cDue').value ? Number($('cDue').value) : null,
     skin: pickedSkin,
   };
   const q = editCard ? sb.from('cards').update(payload).eq('id', editCard.id) : sb.from('cards').insert(payload);
@@ -1407,7 +1468,7 @@ window.openPlanSheet = (planId) => {
     </div>
     <div style="margin-top:12px; display:flex; flex-direction:column; gap:9px;">
       <div class="fieldrow"><label>ชื่อรายการ</label><input id="pName" maxlength="60" value="${editPlan ? esc(editPlan.name) : ''}" placeholder='เช่น MacBook Pro 14"'></div>
-      <div class="fieldrow"><label>บัตร</label><select id="pCard">${cards.map(c => `<option value="${c.id}" ${editPlan && editPlan.card_id === c.id ? 'selected' : ''}>${esc(c.bank || c.name)} ···· ${esc(c.last4 || '')}</option>`).join('')}</select></div>
+      <div class="fieldrow"><label>บัตร</label><select id="pCard">${cards.map(c => `<option value="${c.id}" ${editPlan && editPlan.card_id === c.id ? 'selected' : ''}>${esc(c.bank || c.name)}${c.last4 ? ' ···· ' + esc(c.last4) : ''}</option>`).join('')}</select></div>
       <div class="fieldrow"><label>ต่อเดือน (฿)</label><input id="pPer" type="number" min="1" step="0.01" inputmode="decimal" value="${editPlan ? Number(editPlan.per_month) : ''}" placeholder="0.00"></div>
       <div class="fieldrow"><label>จำนวนงวด</label><input id="pTotal" type="number" min="1" max="60" inputmode="numeric" value="${editPlan ? editPlan.total_terms : 10}"></div>
       <div class="fieldrow"><label>จ่ายแล้ว (งวด)</label><input id="pPaid" type="number" min="0" max="60" inputmode="numeric" value="${editPlan ? editPlan.terms_paid : 0}"></div>
