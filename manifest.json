@@ -1,0 +1,16 @@
+{
+  "name": "จดบัตรเครดิต",
+  "short_name": "จดบัตร",
+  "description": "บันทึกรายการใช้จ่ายบัตรเครดิต แยกบัตร แยกรอบบิล",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f2f3fa",
+  "theme_color": "#4652c9",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234652c9'/%3E%3Crect x='18' y='30' width='64' height='44' rx='8' fill='white'/%3E%3Crect x='18' y='38' width='64' height='10' fill='%2323263b'/%3E%3Crect x='24' y='58' width='24' height='6' rx='3' fill='%234652c9'/%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#4652c9">
+<title>จดบัตรเครดิต — บันทึกรายการใช้จ่าย</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="supabase.min.js"></script>
+<script src="config.js"></script>
+<style>
+  :root {
+    --bg: #f2f3fa;
+    --card-bg: #ffffff;
+    --ink: #23263b;
+    --muted: #7a7f9a;
+    --line: #e6e8f2;
+    --accent: #4652c9;
+    --accent-soft: #eceefc;
+    --green: #14a06a;
+    --green-soft: #e2f6ec;
+    --red: #d9435f;
+    --red-soft: #fdeaee;
+    --radius: 16px;
+    --shadow: 0 4px 20px rgba(35, 38, 59, .07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: 'Prompt', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 16px 16px 90px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 2px 18px;
+  }
+  header.top h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: .01em; }
+  header.top h1 span { color: var(--accent); }
+  .userbox { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--muted); max-width: 55%; }
+  .userbox .email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .btn {
+    font-family: inherit; font-size: .92rem; font-weight: 500;
+    border: none; border-radius: 12px; padding: 11px 18px;
+    cursor: pointer; transition: filter .15s, transform .05s;
+    display: inline-flex; align-items: center; gap: 7px; justify-content: center;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--muted); padding: 8px 10px; }
+  .btn-soft { background: var(--accent-soft); color: var(--accent); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-danger-soft { background: var(--red-soft); color: var(--red); }
+  .btn-sm { font-size: .8rem; padding: 7px 12px; border-radius: 10px; }
+  .btn-block { width: 100%; }
+  .btn:disabled { opacity: .55; cursor: default; }
+
+  /* ---------- auth ---------- */
+  .auth-hero { text-align: center; margin: 42px 0 26px; }
+  .auth-hero .logo {
+    width: 74px; height: 50px; margin: 0 auto 16px; border-radius: 10px;
+    background: linear-gradient(135deg, #5b6ee8, #8b5cf6);
+    position: relative; box-shadow: var(--shadow);
+  }
+  .auth-hero .logo::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 9px; background: rgba(20,22,50,.35);
+  }
+  .auth-hero .logo::after {
+    content: ""; position: absolute; left: 10px; bottom: 8px; width: 22px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.75);
+  }
+  .auth-hero h2 { font-size: 1.35rem; font-weight: 600; }
+  .auth-hero p { color: var(--muted); font-size: .88rem; margin-top: 4px; }
+  .panel {
+    background: var(--card-bg); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 22px;
+  }
+  .tabs { display: flex; background: var(--bg); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
+  .tabs button {
+    flex: 1; border: none; background: transparent; font-family: inherit;
+    padding: 9px; border-radius: 9px; font-size: .9rem; font-weight: 500;
+    color: var(--muted); cursor: pointer;
+  }
+  .tabs button.active { background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(35,38,59,.08); }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: .8rem; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; font-family: inherit; font-size: 1rem;
+    border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 11px 14px; background: #fff; color: var(--ink);
+    outline: none; transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .msg { font-size: .84rem; border-radius: 10px; padding: 10px 13px; margin-bottom: 14px; display: none; }
+  .msg.err { display: block; background: var(--red-soft); color: var(--red); }
+  .msg.ok { display: block; background: var(--green-soft); color: var(--green); }
+
+  /* ---------- summary ---------- */
+  .summary {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
+  }
+  .sumbox { background: var(--card-bg); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .sumbox .t { font-size: .74rem; color: var(--muted); }
+  .sumbox .v { font-size: 1.15rem; font-weight: 600; margin-top: 2px; }
+  .sumbox .v.red { color: var(--red); }
+  .sumbox .v.green { color: var(--green); }
+
+  /* ---------- credit cards ---------- */
+  .cc {
+    border-radius: 18px; padding: 18px 20px; color: #fff; cursor: pointer;
+    margin-bottom: 14px; box-shadow: 0 8px 24px rgba(35,38,59,.18);
+    position: relative; overflow: hidden;
+  }
+  .cc::after {
+    content: ""; position: absolute; right: -40px; top: -40px; width: 150px; height: 150px;
+    border-radius: 50%; background: rgba(255,255,255,.12);
+  }
+  .cc .chip { width: 34px; height: 24px; border-radius: 6px; background: linear-gradient(135deg,#f6d76a,#d9a93f); margin-bottom: 12px; }
+  .cc .name { font-size: 1.05rem; font-weight: 600; }
+  .cc .meta { font-size: .74rem; opacity: .85; margin-top: 2px; }
+  .cc .row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 14px; }
+  .cc .lbl { font-size: .7rem; opacity: .85; }
+  .cc .amt { font-size: 1.2rem; font-weight: 600; }
+  .cc .amt.zero { opacity: .85; font-size: .95rem; font-weight: 500; }
+
+  .empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: .9rem; }
+  .empty .big { font-size: 2.2rem; margin-bottom: 10px; }
+
+  /* ---------- detail ---------- */
+  .backrow { display: flex; align-items: center; gap: 4px; margin-bottom: 12px; }
+  .cyclenav {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card-bg); border-radius: 14px; padding: 8px 10px;
+    box-shadow: var(--shadow); margin-bottom: 12px;
+  }
+  .cyclenav .lbl { font-weight: 500; font-size: .95rem; text-align: center; }
+  .cyclenav .sub { display: block; font-size: .72rem; color: var(--muted); font-weight: 400; }
+  .cyclenav button { border: none; background: var(--bg); width: 38px; height: 38px; border-radius: 11px; font-size: 1.1rem; cursor: pointer; color: var(--ink); }
+
+  .txlist { margin-top: 14px; }
+  .tx {
+    background: var(--card-bg); border-radius: 14px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 9px; box-shadow: var(--shadow);
+  }
+  .tx.paid { opacity: .62; }
+  .tx .chk {
+    width: 26px; height: 26px; min-width: 26px; border-radius: 8px;
+    border: 2px solid var(--line); background: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .9rem; color: #fff; transition: all .15s;
+  }
+  .tx.paid .chk { background: var(--green); border-color: var(--green); }
+  .tx .info { flex: 1; min-width: 0; }
+  .tx .n { font-weight: 500; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx.paid .n { text-decoration: line-through; }
+  .tx .d { font-size: .74rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx .right { text-align: right; }
+  .tx .a { font-weight: 600; font-size: .98rem; white-space: nowrap; }
+  .tx .actions { display: flex; gap: 2px; justify-content: flex-end; margin-top: 2px; }
+  .tx .actions button { border: none; background: none; color: var(--muted); font-size: .72rem; cursor: pointer; padding: 2px 5px; font-family: inherit; }
+  .tx .actions button:hover { color: var(--accent); }
+
+  .payall { margin: 4px 0 2px; }
+
+  /* ---------- fab & modal ---------- */
+  .fab {
+    position: fixed; right: 18px; bottom: calc(20px + env(safe-area-inset-bottom));
+    width: 58px; height: 58px; border-radius: 50%; border: none;
+    background: var(--accent); color: #fff; font-size: 1.7rem; cursor: pointer;
+    box-shadow: 0 8px 22px rgba(70,82,201,.45); z-index: 40;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+  }
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(20,22,40,.45); z-index: 50;
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: #fff; width: 100%; max-width: 560px;
+    border-radius: 20px 20px 0 0; padding: 22px 20px calc(26px + env(safe-area-inset-bottom));
+    max-height: 88vh; overflow-y: auto;
+  }
+  @media (min-width: 600px) {
+    .modal-bg { align-items: center; }
+    .modal { border-radius: 20px; max-width: 420px; }
+  }
+  .modal h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 16px; }
+  .modal .btnrow { display: flex; gap: 10px; margin-top: 6px; }
+  .modal .btnrow .btn { flex: 1; }
+  .colorpick { display: flex; gap: 10px; flex-wrap: wrap; }
+  .colorpick .c { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
+  .colorpick .c.sel { border-color: var(--ink); }
+
+  .toolbar { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
+  .loading { text-align: center; color: var(--muted); padding: 50px 0; }
+  .spin {
+    width: 30px; height: 30px; border-radius: 50%; margin: 0 auto 12px;
+    border: 3px solid var(--line); border-top-color: var(--accent);
+    animation: sp 0.8s linear infinite;
+  }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .setupbox { line-height: 1.7; font-size: .9rem; }
+  .setupbox code { background: var(--bg); padding: 2px 7px; border-radius: 6px; font-size: .82rem; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="loading"><div class="spin"></div>กำลังโหลด…</div>
+</div>
+
+<script>
+"use strict";
+const CFG = window.APP_CONFIG || {};
+let sb = null;
+let session = null;
+let cards = [];
+let txs = [];
+let view = { name: "cards", cardId: null, cycleOffset: 0 };
+let editingTx = null;
+let editingCard = null;
+let pickedColor = "#5b6ee8";
+
+const COLORS = ["#5b6ee8", "#8b5cf6", "#0ea5b7", "#14a06a", "#e8842c", "#d9435f", "#2d3250", "#b8860b"];
+const $ = (id) => document.getElementById(id);
+const app = $("app");
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (n) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const thDate = (s) => new Date(s + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
+const thDateFull = (d) => d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+
+function authErrTh(m) {
+  m = String(m || "");
+  if (/invalid login credentials/i.test(m)) return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+  if (/already registered/i.test(m)) return "อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบแทน";
+  if (/at least 6/i.test(m) || /password/i.test(m) && /short|weak/i.test(m)) return "รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร";
+  if (/rate limit/i.test(m)) return "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่";
+  if (/not confirmed/i.test(m)) return "อีเมลนี้ยังไม่ได้ยืนยัน กรุณาเช็กกล่องจดหมาย";
+  return "เกิดข้อผิดพลาด: " + m;
+}
+
+/* ---------- billing cycle ---------- */
+function clampDay(y, m, d) {
+  const last = new Date(y, m + 1, 0).getDate();
+  return new Date(y, m, Math.min(d, last));
+}
+function cycleRange(card, offset) {
+  const today = new Date();
+  if (!card.statement_day) {
+    const base = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+    const start = base;
+    const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+    return { start, end, label: base.toLocaleDateString("th-TH", { month: "long", year: "numeric" }), sub: "รอบเดือนปฏิทิน" };
+  }
+  const d = card.statement_day;
+  let y = today.getFullYear(), m = today.getMonth();
+  const cutoffThis = clampDay(y, m, d);
+  if (ymd(today) > ymd(cutoffThis)) m += 1;
+  m += offset;
+  const end = clampDay(y, m, d);
+  const prevEnd = clampDay(y, m - 1, d);
+  const start = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), prevEnd.getDate() + 1);
+  return { start, end, label: "รอบตัด " + thDateFull(end), sub: thDateFull(start) + " – " + thDateFull(end) };
+}
+function txsInCycle(cardId, range) {
+  const s = ymd(range.start), e = ymd(range.end);
+  return txs.filter((t) => t.card_id === cardId && t.tx_date >= s && t.tx_date <= e);
+}
+
+/* ---------- data ---------- */
+async function loadData() {
+  const [c, t] = await Promise.all([
+    sb.from("cards").select("*").order("created_at"),
+    sb.from("transactions").select("*").order("tx_date", { ascending: false }).order("created_at", { ascending: false }),
+  ]);
+  if (c.error || t.error) { alert("โหลดข้อมูลไม่สำเร็จ: " + (c.error || t.error).message); return; }
+  cards = c.data; txs = t.data;
+}
+
+/* ---------- render ---------- */
+function render() {
+  if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) return renderSetup();
+  if (!session) return renderAuth();
+  if (view.name === "detail") return renderDetail();
+  return renderCards();
+}
+
+function renderSetup() {
+  app.innerHTML = `
+    <div class="auth-hero"><div class="logo"></div><h2>จดบัตรเครดิต</h2><p>ยังตั้งค่าไม่เสร็จ</p></div>
+    <div class="panel setupbox">
+      แอปยังไม่ได้เชื่อมกับฐานข้อมูล Supabase<br>
+      กรุณาใส่ค่า <code>SUPABASE_URL</code> และ <code>SUPABASE_ANON_KEY</code> ในไฟล์ <code>config.js</code> แล้ว deploy ใหม่อีกครั้ง
+      (ดูขั้นตอนใน README.md)
+    </div>`;
+}
+
+function renderAuth() {
+  app.innerHTML = `
+    <div class="auth-hero"><div class="logo"></div><h2>จดบัตรเครดิต</h2><p>บันทึกรายการใช้จ่าย แยกบัตร แยกรอบบิล</p></div>
+    <div class="panel">
+      <div class="tabs">
+        <button id="tabLogin" class="active">เข้าสู่ระบบ</button>
+        <button id="tabSignup">สมัครใหม่</button>
+      </div>
+      <div class="msg" id="authMsg"></div>
+      <form id="authForm">
+        <div class="field"><label>อีเมล</label><input type="email" id="aEmail" required autocomplete="email" placeholder="you@example.com"></div>
+        <div class="field"><label>รหัสผ่าน (อย่างน้อย 6 ตัว)</label><input type="password" id="aPass" required minlength="6" autocomplete="current-password" placeholder="••••••••"></div>
+        <button class="btn btn-primary btn-block" id="aBtn" type="submit">เข้าสู่ระบบ</button>
+      </form>
+    </div>`;
+  let mode = "login";
+  const setMode = (m) => {
+    mode = m;
+    $("tabLogin").classList.toggle("active", m === "login");
+    $("tabSignup").classList.toggle("active", m === "signup");
+    $("aBtn").textContent = m === "login" ? "เข้าสู่ระบบ" : "สมัครสมาชิก";
+  };
+  $("tabLogin").onclick = () => setMode("login");
+  $("tabSignup").onclick = () => setMode("signup");
+  $("authForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $("aEmail").value.trim(), password = $("aPass").value;
+    const msg = $("authMsg"); msg.className = "msg"; $("aBtn").disabled = true;
+    try {
+      if (mode === "login") {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } else {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+        if (!data.session) {
+          msg.className = "msg ok";
+          msg.textContent = "สมัครแล้ว! ระบบส่งลิงก์ยืนยันไปที่อีเมลของคุณ กรุณากดยืนยันก่อนเข้าสู่ระบบ";
+        }
+      }
+    } catch (err) {
+      msg.className = "msg err"; msg.textContent = authErrTh(err.message);
+    }
+    $("aBtn").disabled = false;
+  };
+}
+
+function cardUnpaid(cardId) {
+  return txs.filter((t) => t.card_id === cardId && !t.paid).reduce((s, t) => s + Number(t.amount), 0);
+}
+
+function renderCards() {
+  const totalUnpaid = txs.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
+  const monthRange = cycleRange({ statement_day: null }, 0);
+  const ms = ymd(monthRange.start), me = ymd(monthRange.end);
+  const monthTotal = txs.filter((t) => t.tx_date >= ms && t.tx_date <= me).reduce((s, t) => s + Number(t.amount), 0);
+
+  let cardsHtml = cards.map((c) => {
+    const unpaid = cardUnpaid(c.id);
+    const cnt = txs.filter((t) => t.card_id === c.id).length;
+    return `
+    <div class="cc" style="background:linear-gradient(135deg, ${esc(c.color)}, ${esc(c.color)}cc)" onclick="openCard('${c.id}')">
+      <div class="chip"></div>
+      <div class="name">${esc(c.name)}</div>
+      <div class="meta">${c.statement_day ? "ตัดรอบทุกวันที่ " + c.statement_day : "รอบเดือนปฏิทิน"} · ${cnt} รายการ</div>
+      <div class="row">
+        <div><div class="lbl">ค้างจ่ายทั้งหมด</div>
+          ${unpaid > 0 ? `<div class="amt">฿${money(unpaid)}</div>` : `<div class="amt zero">จ่ายครบแล้ว ✓</div>`}
+        </div>
+        <div style="font-size:1.3rem;opacity:.9">›</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  if (!cards.length) {
+    cardsHtml = `<div class="empty"><div class="big">💳</div>ยังไม่มีบัตร<br>กดปุ่ม + ด้านล่างเพื่อเพิ่มบัตรใบแรก</div>`;
+  }
+
+  app.innerHTML = `
+    <header class="top">
+      <h1>จด<span>บัตรเครดิต</span></h1>
+      <div class="userbox"><span class="email">${esc(session.user.email)}</span>
+        <button class="btn btn-ghost btn-sm" onclick="logout()">ออก</button></div>
+    </header>
+    <div class="summary">
+      <div class="sumbox"><div class="t">ค้างจ่ายรวมทุกบัตร</div><div class="v ${totalUnpaid > 0 ? "red" : "green"}">฿${money(totalUnpaid)}</div></div>
+      <div class="sumbox"><div class="t">ใช้ไปเดือนนี้</div><div class="v">฿${money(monthTotal)}</div></div>
+    </div>
+    ${cards.length ? `<div class="toolbar"><button class="btn btn-soft btn-sm" onclick="exportCSV()">⬇ ส่งออก CSV ทั้งหมด</button></div>` : ""}
+    ${cardsHtml}
+    <button class="fab" onclick="openCardModal()" title="เพิ่มบัตร">+</button>
+    ${modalHtml()}`;
+}
+
+function renderDetail() {
+  const card = cards.find((c) => c.id === view.cardId);
+  if (!card) { view = { name: "cards", cardId: null, cycleOffset: 0 }; return render(); }
+  const range = cycleRange(card, view.cycleOffset);
+  const list = txsInCycle(card.id, range);
+  const total = list.reduce((s, t) => s + Number(t.amount), 0);
+  const unpaid = list.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
+  const unpaidCnt = list.filter((t) => !t.paid).length;
+
+  const rows = list.map((t) => `
+    <div class="tx ${t.paid ? "paid" : ""}">
+      <div class="chk" onclick="togglePaid('${t.id}', ${!t.paid})">${t.paid ? "✓" : ""}</div>
+      <div class="info">
+        <div class="n">${esc(t.name)}</div>
+        <div class="d">${thDate(t.tx_date)}${t.place ? " · " + esc(t.place) : ""}</div>
+      </div>
+      <div class="right">
+        <div class="a">฿${money(t.amount)}</div>
+        <div class="actions">
+          <button onclick="openTxModal('${t.id}')">แก้ไข</button>
+          <button onclick="delTx('${t.id}')">ลบ</button>
+        </div>
+      </div>
+    </div>`).join("");
+
+  app.innerHTML = `
+    <div class="backrow">
+      <button class="btn btn-ghost" onclick="backHome()">‹ กลับ</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" onclick="openCardModal('${card.id}')">แก้ไขบัตร</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="delCard('${card.id}')">ลบบัตร</button>
+    </div>
+    <div class="cc" style="background:linear-gradient(135deg, ${esc(card.color)}, ${esc(card.color)}cc); cursor:default">
+      <div class="chip"></div>
+      <div class="name">${esc(card.name)}</div>
+      <div class="meta">${card.statement_day ? "ตัดรอบทุกวันที่ " + card.statement_day : "รอบเดือนปฏิทิน"}</div>
+      <div class="row">
+        <div><div class="lbl">ยอดรอบนี้</div><div class="amt">฿${money(total)}</div></div>
+        <div style="text-align:right"><div class="lbl">ค้างจ่ายรอบนี้</div><div class="amt">฿${money(unpaid)}</div></div>
+      </div>
+    </div>
+    <div class="cyclenav">
+      <button onclick="shiftCycle(-1)">‹</button>
+      <div class="lbl">${esc(range.label)}<span class="sub">${esc(range.sub)}</span></div>
+      <button onclick="shiftCycle(1)">›</button>
+    </div>
+    ${unpaidCnt > 0 ? `<button class="btn btn-green btn-block payall" onclick="payAll('${card.id}')">✓ จ่ายทั้งรอบนี้ (${unpaidCnt} รายการ · ฿${money(unpaid)})</button>` : ""}
+    <div class="toolbar" style="margin-top:10px"><button class="btn btn-soft btn-sm" onclick="exportCSV('${card.id}')">⬇ ส่งออก CSV บัตรนี้</button></div>
+    <div class="txlist">
+      ${rows || `<div class="empty"><div class="big">🧾</div>ไม่มีรายการในรอบนี้<br>กดปุ่ม + เพื่อจดรายการ</div>`}
+    </div>
+    <button class="fab" onclick="openTxModal()" title="จดรายการ">+</button>
+    ${modalHtml()}`;
+}
+
+/* ---------- modals ---------- */
+function modalHtml() {
+  return `
+  <div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="modalBody"></div>
+  </div>`;
+}
+function closeModal() { $("modalBg").classList.remove("open"); }
+
+window.openCardModal = (cardId) => {
+  editingCard = cardId ? cards.find((c) => c.id === cardId) : null;
+  pickedColor = editingCard ? editingCard.color : COLORS[cards.length % COLORS.length];
+  const dayOpts = ['<option value="">รอบเดือนปฏิทิน (1 – สิ้นเดือน)</option>']
+    .concat(Array.from({ length: 31 }, (_, i) => {
+      const d = i + 1;
+      const sel = editingCard && editingCard.statement_day === d ? "selected" : "";
+      return `<option value="${d}" ${sel}>ตัดรอบทุกวันที่ ${d}</option>`;
+    })).join("");
+  $("modalBody").innerHTML = `
+    <h3>${editingCard ? "แก้ไขบัตร" : "เพิ่มบัตรใหม่"}</h3>
+    <form id="cardForm">
+      <div class="field"><label>ชื่อบัตร</label>
+        <input id="cName" required maxlength="60" placeholder="เช่น KBank แมว, SCB Planet" value="${editingCard ? esc(editingCard.name) : ""}"></div>
+      <div class="field"><label>วันตัดรอบบิล</label><select id="cDay">${dayOpts}</select></div>
+      <div class="field"><label>สีบัตร</label>
+        <div class="colorpick">${COLORS.map((c) => `<div class="c ${c === pickedColor ? "sel" : ""}" style="background:${c}" onclick="pickColor(this,'${c}')"></div>`).join("")}</div>
+      </div>
+      <div class="btnrow">
+        <button type="button" class="btn btn-soft" onclick="closeModal()">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">${editingCard ? "บันทึก" : "เพิ่มบัตร"}</button>
+      </div>
+    </form>`;
+  $("modalBg").classList.add("open");
+  $("cardForm").onsubmit = saveCard;
+};
+window.pickColor = (el, c) => {
+  pickedColor = c;
+  el.parentElement.querySelectorAll(".c").forEach((x) => x.classList.remove("sel"));
+  el.classList.add("sel");
+};
+async function saveCard(e) {
+  e.preventDefault();
+  const payload = {
+    name: $("cName").value.trim(),
+    statement_day: $("cDay").value ? Number($("cDay").value) : null,
+    color: pickedColor,
+  };
+  const q = editingCard
+    ? sb.from("cards").update(payload).eq("id", editingCard.id)
+    : sb.from("cards").insert(payload);
+  const { error } = await q;
+  if (error) return alert("บันทึกไม่สำเร็จ: " + error.message);
+  closeModal(); await loadData(); render();
+}
+
+window.openTxModal = (txId) => {
+  editingTx = txId ? txs.find((t) => t.id === txId) : null;
+  $("modalBody").innerHTML = `
+    <h3>${editingTx ? "แก้ไขรายการ" : "จดรายการใหม่"}</h3>
+    <form id="txForm">
+      <div class="field"><label>วันที่</label>
+        <input type="date" id="tDate" required value="${editingTx ? editingTx.tx_date : ymd(new Date())}"></div>
+      <div class="field"><label>ชื่อรายการ</label>
+        <input id="tName" required maxlength="120" placeholder="เช่น ค่าอาหาร, เติมน้ำมัน" value="${editingTx ? esc(editingTx.name) : ""}"></div>
+      <div class="field"><label>ราคา (บาท)</label>
+        <input type="number" id="tAmount" required step="0.01" min="0.01" inputmode="decimal" placeholder="0.00" value="${editingTx ? editingTx.amount : ""}"></div>
+      <div class="field"><label>สถานที่ (ไม่บังคับ)</label>
+        <input id="tPlace" maxlength="120" placeholder="เช่น Lotus, Shopee" value="${editingTx && editingTx.place ? esc(editingTx.place) : ""}"></div>
+      <div class="btnrow">
+        <button type="button" class="btn btn-soft" onclick="closeModal()">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">${editingTx ? "บันทึก" : "จดรายการ"}</button>
+      </div>
+    </form>`;
+  $("modalBg").classList.add("open");
+  $("txForm").onsubmit = saveTx;
+};
+async function saveTx(e) {
+  e.preventDefault();
+  const payload = {
+    tx_date: $("tDate").value,
+    name: $("tName").value.trim(),
+    amount: Number($("tAmount").value),
+    place: $("tPlace").value.trim() || null,
+  };
+  const q = editingTx
+    ? sb.from("transactions").update(payload).eq("id", editingTx.id)
+    : sb.from("transactions").insert({ ...payload, card_id: view.cardId });
+  const { error } = await q;
+  if (error) return alert("บันทึกไม่สำเร็จ: " + error.message);
+  closeModal(); await loadData(); render();
+}
+
+/* ---------- actions ---------- */
+window.openCard = (id) => { view = { name: "detail", cardId: id, cycleOffset: 0 }; render(); };
+window.backHome = () => { view = { name: "cards", cardId: null, cycleOffset: 0 }; render(); };
+window.shiftCycle = (n) => { view.cycleOffset += n; render(); };
+window.logout = async () => { await sb.auth.signOut(); };
+
+window.togglePaid = async (id, paid) => {
+  const t = txs.find((x) => x.id === id);
+  if (t) t.paid = paid;
+  render();
+  const { error } = await sb.from("transactions").update({ paid }).eq("id", id);
+  if (error) { alert("อัปเดตไม่สำเร็จ: " + error.message); await loadData(); render(); }
+};
+
+window.payAll = async (cardId) => {
+  const card = cards.find((c) => c.id === cardId);
+  const range = cycleRange(card, view.cycleOffset);
+  const list = txsInCycle(cardId, range).filter((t) => !t.paid);
+  if (!list.length) return;
+  if (!confirm(`ยืนยันจ่ายทั้งรอบ ${list.length} รายการ รวม ฿${money(list.reduce((s, t) => s + Number(t.amount), 0))}?`)) return;
+  const { error } = await sb.from("transactions").update({ paid: true })
+    .eq("card_id", cardId).eq("paid", false)
+    .gte("tx_date", ymd(range.start)).lte("tx_date", ymd(range.end));
+  if (error) return alert("อัปเดตไม่สำเร็จ: " + error.message);
+  await loadData(); render();
+};
+
+window.delTx = async (id) => {
+  if (!confirm("ลบรายการนี้?")) return;
+  const { error } = await sb.from("transactions").delete().eq("id", id);
+  if (error) return alert("ลบไม่สำเร็จ: " + error.message);
+  await loadData(); render();
+};
+
+window.delCard = async (id) => {
+  const card = cards.find((c) => c.id === id);
+  const cnt = txs.filter((t) => t.card_id === id).length;
+  if (!confirm(`ลบบัตร "${card.name}" และรายการทั้งหมด ${cnt} รายการ? ข้อมูลจะหายถาวร`)) return;
+  const { error } = await sb.from("cards").delete().eq("id", id);
+  if (error) return alert("ลบไม่สำเร็จ: " + error.message);
+  view = { name: "cards", cardId: null, cycleOffset: 0 };
+  await loadData(); render();
+};
+
+window.exportCSV = (cardId) => {
+  const list = cardId ? txs.filter((t) => t.card_id === cardId) : txs;
+  const cardName = (id) => (cards.find((c) => c.id === id) || {}).name || "";
+  const rows = [["บัตร", "วันที่", "รายการ", "ราคา", "สถานที่", "สถานะ"]]
+    .concat(list.map((t) => [cardName(t.card_id), t.tx_date, t.name, t.amount, t.place || "", t.paid ? "จ่ายแล้ว" : "ยังไม่จ่าย"]));
+  const csv = "\uFEFF" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `credit-card-${ymd(new Date())}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+window.closeModal = closeModal;
+
+/* ---------- boot ---------- */
+(async function boot() {
+  if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) { render(); return; }
+  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  if (session) await loadData();
+  render();
+  sb.auth.onAuthStateChange(async (_ev, s) => {
+    const wasIn = !!session;
+    session = s;
+    if (s && !wasIn) { await loadData(); view = { name: "cards", cardId: null, cycleOffset: 0 }; render(); }
+    if (!s && wasIn) { cards = []; txs = []; view = { name: "cards", cardId: null, cycleOffset: 0 }; render(); }
+  });
+})();
+</script>
+</body>
+</html>
