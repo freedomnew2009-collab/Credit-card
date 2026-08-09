@@ -3,845 +3,1459 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#4652c9">
+<meta name="theme-color" content="#F4F1EA">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="จดบัตร">
-<title>จดบัตรเครดิต — บันทึกรายการใช้จ่าย</title>
+<title>จดบัตรเครดิต — บันทึกค่าใช้จ่ายบัตรเครดิต</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@200;300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <script src="supabase.min.js"></script>
 <script src="config.js"></script>
 <style>
   :root {
-    --bg: #f2f3fa;
-    --card-bg: #ffffff;
-    --ink: #23263b;
-    --muted: #7a7f9a;
-    --line: #e6e8f2;
-    --accent: #4652c9;
-    --accent-soft: #eceefc;
-    --green: #14a06a;
-    --green-soft: #e2f6ec;
-    --red: #d9435f;
-    --red-soft: #fdeaee;
-    --radius: 16px;
-    --shadow: 0 4px 20px rgba(35, 38, 59, .07);
+    --app-bg: #F4F1EA;
+    --bg: #FBF9F4;
+    --raised: rgba(255,255,255,.86);
+    --sunken: rgba(23,20,14,.05);
+    --t1: #17140E;
+    --t1b: #1E1A12;
+    --t2: rgba(23,20,14,.66);
+    --t3: rgba(23,20,14,.52);
+    --hair: rgba(23,20,14,.09);
+    --hairsoft: rgba(23,20,14,.05);
+    --gold: #8A6A28;
+    --gold-deep: #6E5219;
+    --gold-tint: rgba(150,116,45,.12);
+    --gold-tint-strong: rgba(150,116,45,.16);
+    --gold-bd: rgba(150,116,45,.42);
+    --success: #2E7D55;
+    --success-a: rgba(38,110,74,.98);
+    --warn: #A9640F;
+    --scrim: rgba(60,50,25,.34);
+    --tabbar-bg: rgba(255,255,255,.9);
+    --sheet-bg: linear-gradient(180deg,#FFFFFF,#F6F2E8);
+    --key-active: rgba(150,116,45,.24);
+    --card-shadow: 0 18px 40px -18px rgba(60,50,25,.26);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --app-bg: #08080A;
+      --bg: #0A0A0D;
+      --raised: rgba(255,255,255,.055);
+      --sunken: rgba(255,255,255,.06);
+      --t1: #F5F2EC;
+      --t1b: #F0EDE7;
+      --t2: rgba(245,242,236,.66);
+      --t3: rgba(245,242,236,.5);
+      --hair: rgba(255,255,255,.08);
+      --hairsoft: rgba(255,255,255,.05);
+      --gold: #D8C08C;
+      --gold-deep: #E8D8AC;
+      --gold-tint: rgba(216,192,140,.12);
+      --gold-tint-strong: rgba(216,192,140,.16);
+      --gold-bd: rgba(216,192,140,.4);
+      --success: #7FCFA4;
+      --success-a: rgba(127,207,164,.92);
+      --warn: #E0A55F;
+      --scrim: rgba(0,0,0,.55);
+      --tabbar-bg: rgba(24,24,28,.9);
+      --sheet-bg: linear-gradient(180deg,#1A1A1E,#121215);
+      --key-active: rgba(216,192,140,.24);
+      --card-shadow: 0 18px 40px -18px rgba(0,0,0,.6);
+    }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    font-family: 'Prompt', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--ink);
+    font-family: 'Anuphan', system-ui, sans-serif;
+    background: var(--app-bg);
+    color: var(--t1);
+    -webkit-font-smoothing: antialiased;
     min-height: 100vh;
-    padding-bottom: env(safe-area-inset-bottom);
   }
-  .wrap { max-width: 560px; margin: 0 auto; padding: 16px 16px 90px; }
-  header.top {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 2px 18px;
-  }
-  header.top h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: .01em; }
-  header.top h1 span { color: var(--accent); }
-  .userbox { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--muted); max-width: 55%; }
-  .userbox .email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  *::-webkit-scrollbar { width: 0; height: 0; }
+  input, textarea, select, button { font-family: 'Anuphan', sans-serif; }
+  input::placeholder, textarea::placeholder { color: var(--t2); font-weight: 500; }
 
-  .btn {
-    font-family: inherit; font-size: .92rem; font-weight: 500;
-    border: none; border-radius: 12px; padding: 11px 18px;
-    cursor: pointer; transition: filter .15s, transform .05s;
-    display: inline-flex; align-items: center; gap: 7px; justify-content: center;
+  @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes sheetUp { from { opacity:0; transform:translateY(100%); } to { opacity:1; transform:none; } }
+  @keyframes popIn { 0% { opacity:0; transform:scale(.86); } 60% { transform:scale(1.04); } 100% { opacity:1; transform:scale(1); } }
+  @keyframes shimmer { 0% { transform:translateX(-140%) rotate(8deg); } 55%,100% { transform:translateX(240%) rotate(8deg); } }
+  @keyframes auraDrift { 0%,100% { transform:translate(0,0) scale(1); } 50% { transform:translate(6%,-5%) scale(1.12); } }
+  @keyframes barGrow { from { transform:scaleY(.02); } to { transform:scaleY(1); } }
+  @keyframes checkDraw { to { stroke-dashoffset:0; } }
+  @keyframes glowPulse { 0%,100% { opacity:.35; } 50% { opacity:.75; } }
+  @keyframes scanSweep { 0% { top:26px; } 50% { top:calc(100% - 28px); } 100% { top:26px; } }
+  @keyframes ringSpin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .shimmer-el, .aura, .scanline { animation: none !important; display: none; }
+    * { animation-duration: .01ms !important; }
   }
-  .btn:active { transform: scale(.97); }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-ghost { background: transparent; color: var(--muted); padding: 8px 10px; }
-  .btn-soft { background: var(--accent-soft); color: var(--accent); }
-  .btn-green { background: var(--green); color: #fff; }
-  .btn-danger-soft { background: var(--red-soft); color: var(--red); }
-  .btn-sm { font-size: .8rem; padding: 7px 12px; border-radius: 10px; }
-  .btn-block { width: 100%; }
-  .btn:disabled { opacity: .55; cursor: default; }
 
-  /* ---------- auth ---------- */
-  .auth-hero { text-align: center; margin: 42px 0 26px; }
-  .auth-hero .logo {
-    width: 74px; height: 50px; margin: 0 auto 16px; border-radius: 10px;
-    background: linear-gradient(135deg, #5b6ee8, #8b5cf6);
-    position: relative; box-shadow: var(--shadow);
+  .phone {
+    position: relative; max-width: 430px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+    background: var(--bg); display: flex; flex-direction: column; overflow: hidden;
   }
-  .auth-hero .logo::before {
-    content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 9px; background: rgba(20,22,50,.35);
+  .phone::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(90% 46% at 50% 0%, rgba(150,116,45,.09) 0%, rgba(150,116,45,0) 60%),
+                radial-gradient(70% 40% at 100% 100%, rgba(90,110,200,.07) 0%, rgba(0,0,0,0) 70%);
   }
-  .auth-hero .logo::after {
-    content: ""; position: absolute; left: 10px; bottom: 8px; width: 22px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.75);
-  }
-  .auth-hero h2 { font-size: 1.35rem; font-weight: 600; }
-  .auth-hero p { color: var(--muted); font-size: .88rem; margin-top: 4px; }
-  .panel {
-    background: var(--card-bg); border-radius: var(--radius);
-    box-shadow: var(--shadow); padding: 22px;
-  }
-  .tabs { display: flex; background: var(--bg); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
-  .tabs button {
-    flex: 1; border: none; background: transparent; font-family: inherit;
-    padding: 9px; border-radius: 9px; font-size: .9rem; font-weight: 500;
-    color: var(--muted); cursor: pointer;
-  }
-  .tabs button.active { background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(35,38,59,.08); }
-  .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: .8rem; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
-  .field input, .field select {
-    width: 100%; font-family: inherit; font-size: 1rem;
-    border: 1.5px solid var(--line); border-radius: 12px;
-    padding: 11px 14px; background: #fff; color: var(--ink);
-    outline: none; transition: border-color .15s;
-  }
-  .field input:focus, .field select:focus { border-color: var(--accent); }
-  .msg { font-size: .84rem; border-radius: 10px; padding: 10px 13px; margin-bottom: 14px; display: none; }
-  .msg.err { display: block; background: var(--red-soft); color: var(--red); }
-  .msg.ok { display: block; background: var(--green-soft); color: var(--green); }
+  .content { position: relative; z-index: 10; flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; }
 
-  /* ---------- summary ---------- */
-  .summary {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
-  }
-  .sumbox { background: var(--card-bg); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); }
-  .sumbox .t { font-size: .74rem; color: var(--muted); }
-  .sumbox .v { font-size: 1.15rem; font-weight: 600; margin-top: 2px; }
-  .sumbox .v.red { color: var(--red); }
-  .sumbox .v.green { color: var(--green); }
+  .eyebrow { font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color:var(--t2); font-weight:700; white-space:nowrap; }
+  .screen-title { white-space:nowrap; font-size:20.5px; color:var(--t1); font-weight:600; }
+  .raised { background: var(--raised); border: 1px solid var(--hair); }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .u-fadeup { animation: fadeUp .55s cubic-bezier(.2,.8,.2,1) both; }
+  .u-fadein { animation: fadeIn .45s ease both; }
+  .ellip { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  /* ---------- credit cards ---------- */
-  .cc {
-    border-radius: 18px; padding: 18px 20px; color: #fff; cursor: pointer;
-    margin-bottom: 14px; box-shadow: 0 8px 24px rgba(35,38,59,.18);
-    position: relative; overflow: hidden;
+  .cta {
+    height: 60px; border-radius: 18px; border: none; width: 100%;
+    background: linear-gradient(135deg,#E7D3A4,#C8A96A 55%,#A9884A);
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    color: #1A1508; font-size: 18.5px; font-weight: 700; letter-spacing: .4px;
+    cursor: pointer; box-shadow: 0 14px 30px -12px rgba(150,116,45,.7); transition: .25s;
   }
-  .cc::after {
-    content: ""; position: absolute; right: -40px; top: -40px; width: 150px; height: 150px;
-    border-radius: 50%; background: rgba(255,255,255,.12);
-  }
-  .cc .chip { width: 34px; height: 24px; border-radius: 6px; background: linear-gradient(135deg,#f6d76a,#d9a93f); margin-bottom: 12px; }
-  .cc .name { font-size: 1.05rem; font-weight: 600; }
-  .cc .meta { font-size: .74rem; opacity: .85; margin-top: 2px; }
-  .cc .row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 14px; }
-  .cc .lbl { font-size: .7rem; opacity: .85; }
-  .cc .amt { font-size: 1.2rem; font-weight: 600; }
-  .cc .amt.zero { opacity: .85; font-size: .95rem; font-weight: 500; }
+  .cta:active { transform: scale(.98); }
+  .cta:disabled { opacity: .5; }
 
-  .empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: .9rem; }
-  .empty .big { font-size: 2.2rem; margin-bottom: 10px; }
-
-  /* ---------- detail ---------- */
-  .backrow { display: flex; align-items: center; gap: 4px; margin-bottom: 12px; }
-  .txlist { margin-top: 14px; }
-  .tx {
-    background: var(--card-bg); border-radius: 14px; padding: 12px 14px;
-    margin-bottom: 9px; box-shadow: var(--shadow);
+  .chip {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 13px; border-radius: 99px; cursor: pointer; transition: .3s;
+    background: transparent; border: 1px solid var(--hairsoft); color: var(--t3);
+    font-size: 15px; white-space: nowrap;
   }
-  .tx.paid { background: var(--green-soft); }
-  .tx.paid .n { text-decoration: line-through; color: #3d6b55; }
-  .tx.paid .d { color: #6b9c86; }
-  .tx.paid .a { color: var(--green); }
-  .tx.paid .txcat { background: #fff; }
-  .paidtoggle { display: flex; align-items: center; gap: 10px; font-size: .9rem; cursor: pointer; padding: 4px 0; }
-  .paidtoggle input { width: 22px; height: 22px; accent-color: var(--green); cursor: pointer; }
-  .paidtoggle small { display: block; color: var(--muted); font-size: .74rem; }
-  .txrow { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-  .chev { color: var(--muted); font-size: .75rem; transition: transform .2s; }
-  .tx.open .chev { transform: rotate(180deg); }
-  .txdetail { border-top: 1px dashed var(--line); margin-top: 11px; padding-top: 9px; }
-  .dl { display: flex; justify-content: space-between; font-size: .84rem; padding: 3.5px 0; color: var(--muted); }
-  .dl b { color: var(--ink); font-weight: 500; text-align: right; }
-  .stat-paid { color: var(--green) !important; }
-  .stat-unpaid { color: var(--red) !important; }
-  .dl-actions { display: flex; gap: 8px; margin-top: 10px; }
-  .dl-actions .btn { flex: 1; }
-  .tx .chk {
-    width: 26px; height: 26px; min-width: 26px; border-radius: 8px;
-    border: 2px solid var(--line); background: #fff; cursor: pointer;
+  .chip.sel { background: var(--gold-tint-strong); border-color: var(--gold-bd); color: var(--gold-deep); }
+
+  .fieldrow {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    border-radius: 15px; background: var(--raised); border: 1px solid var(--hair); transition: .28s;
+  }
+  .fieldrow > label { flex: 0 0 88px; white-space: nowrap; font-size: 14.5px; font-weight: 600; color: var(--t2); }
+  .fieldrow input, .fieldrow select {
+    flex: 1; min-width: 0; background: transparent; border: 0; outline: 0;
+    color: var(--t1b); font-size: 17.5px; font-weight: 600;
+  }
+  .fieldrow select option { color: #1E1A12; background: #fff; }
+
+  .txr {
+    display: flex; align-items: center; gap: 13px; padding: 15px 4px;
+    border-bottom: 1px solid var(--hairsoft); transition: .2s; cursor: pointer;
+  }
+  .txr:hover { background: rgba(23,20,14,.035); }
+  .txr .ic {
+    width: 40px; height: 40px; flex: 0 0 40px; border-radius: 13px;
+    background: var(--sunken); border: 1px solid var(--hair);
+    display: flex; align-items: center; justify-content: center; font-size: 20.5px;
+  }
+  .txr .nm { font-size: 17.5px; color: var(--t1b); }
+  .txr .mt { margin-top: 2px; font-size: 14px; color: var(--t2); }
+  .txr .amt { font-size: 18px; font-weight: 500; color: var(--t1); }
+  .txr .st { margin-top: 2px; font-size: 12.5px; }
+
+  .key {
+    height: 64px; border-radius: 16px; background: var(--sunken); border: 1px solid var(--hair);
     display: flex; align-items: center; justify-content: center;
-    font-size: .9rem; color: #fff; transition: all .15s;
+    font-size: 24px; font-weight: 500; color: var(--t1b);
+    cursor: pointer; user-select: none; transition: .15s;
   }
-  .tx.paid .chk { background: var(--green); border-color: var(--green); }
-  .tx .txcat {
-    font-size: 1.2rem; width: 36px; min-width: 36px; height: 36px;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--bg); border-radius: 11px;
-  }
-  .catpick { display: flex; gap: 8px; flex-wrap: wrap; }
-  .catpick .cp {
-    border: 1.5px solid var(--line); background: #fff; border-radius: 12px;
-    padding: 8px 12px; font-size: .85rem; cursor: pointer; font-family: inherit;
-    display: inline-flex; gap: 6px; align-items: center; color: var(--ink);
-  }
-  .catpick .cp.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 500; }
-  .tx .info { flex: 1; min-width: 0; }
-  .tx .n { font-weight: 500; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tx .d { font-size: .74rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tx .right { text-align: right; }
-  .tx .a { font-weight: 600; font-size: .98rem; white-space: nowrap; }
+  .key:active { transform: scale(.94); background: var(--key-active); border-color: var(--gold-bd); }
 
-  .payall { margin: 4px 0 2px; }
-  .paylist { max-height: 44vh; overflow-y: auto; margin-bottom: 10px; }
-  .payrow {
-    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-    border: 1.5px solid var(--line); border-radius: 12px; margin-bottom: 8px; cursor: pointer;
-  }
-  .payrow.sel { border-color: var(--green); background: var(--green-soft); }
-  .payrow .chk {
-    width: 24px; height: 24px; min-width: 24px; border-radius: 7px;
-    border: 2px solid var(--line); background: #fff; color: #fff;
-    display: flex; align-items: center; justify-content: center; font-size: .8rem;
-  }
-  .payrow.sel .chk { background: var(--green); border-color: var(--green); }
-  .payrow .pn { flex: 1; min-width: 0; font-size: .88rem; font-weight: 500; }
-  .payrow .pn small { display: block; font-size: .72rem; color: var(--muted); font-weight: 400; }
-  .payrow .pa { font-weight: 600; font-size: .9rem; white-space: nowrap; }
-  .paytotal { text-align: center; font-size: .86rem; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
-
-  /* ---------- fab & modal ---------- */
-  .fab {
-    position: fixed; right: 18px; bottom: calc(20px + env(safe-area-inset-bottom));
-    width: 58px; height: 58px; border-radius: 50%; border: none;
-    background: var(--accent); color: #fff; font-size: 1.7rem; cursor: pointer;
-    box-shadow: 0 8px 22px rgba(70,82,201,.45); z-index: 40;
-    display: flex; align-items: center; justify-content: center; line-height: 1;
-  }
-  .modal-bg {
-    position: fixed; inset: 0; background: rgba(20,22,40,.45); z-index: 50;
+  .scrim-host {
+    position: fixed; inset: 0; z-index: 55; background: var(--scrim);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     display: none; align-items: flex-end; justify-content: center;
+    animation: fadeIn .25s ease both;
   }
-  .modal-bg.open { display: flex; }
-  .modal {
-    background: #fff; width: 100%; max-width: 560px;
-    border-radius: 20px 20px 0 0; padding: 22px 20px calc(26px + env(safe-area-inset-bottom));
-    max-height: 88vh; overflow-y: auto;
+  .scrim-host.open { display: flex; }
+  .sheet {
+    width: 100%; max-width: 430px; max-height: 88vh; overflow-y: auto;
+    border-radius: 30px 30px 0 0; background: var(--sheet-bg);
+    border-top: 1px solid var(--hair); padding: 14px 20px calc(30px + env(safe-area-inset-bottom));
+    animation: sheetUp .42s cubic-bezier(.2,.85,.25,1) both;
+    box-shadow: 0 -24px 60px -20px rgba(0,0,0,.5);
   }
-  @media (min-width: 600px) {
-    .modal-bg { align-items: center; }
-    .modal { border-radius: 20px; max-width: 420px; }
-  }
-  .modal h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 16px; }
-  .modal .btnrow { display: flex; gap: 10px; margin-top: 6px; }
-  .modal .btnrow .btn { flex: 1; }
-  .colorpick { display: flex; gap: 10px; flex-wrap: wrap; }
-  .colorpick .c { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
-  .colorpick .c.sel { border-color: var(--ink); }
+  .grab { width: 40px; height: 4px; border-radius: 99px; background: var(--hair); margin: 0 auto 16px; }
 
-  .toolbar { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
-  .loading { text-align: center; color: var(--muted); padding: 50px 0; }
+  .tabwrap {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
+    padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+    pointer-events: none;
+  }
+  .tabbar {
+    pointer-events: auto; max-width: 398px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 14px; border-radius: 26px; background: var(--tabbar-bg);
+    border: 1px solid var(--hair);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 12px 30px -14px rgba(60,50,25,.4);
+  }
+  .tabbar .ti {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; padding: 4px 0; transition: .3s; min-height: 44px; justify-content: center;
+    border: none; background: transparent;
+  }
+  .tabbar .ti .tic { font-size: 20.5px; line-height: 1; transition: .3s; }
+  .tabbar .ti .tlb { font-size: 12.5px; letter-spacing: .3px; }
+  .tabgrad {
+    position: fixed; left: 0; right: 0; bottom: 0; height: 110px; z-index: 30; pointer-events: none;
+    background: linear-gradient(180deg, rgba(251,249,244,0) 0%, var(--bg) 78%);
+  }
+
+  .cal-cell {
+    height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-variant-numeric: tabular-nums; transition: .22s; border: 1px solid transparent;
+    background: var(--sunken); color: var(--t1b); cursor: pointer; font-weight: 500;
+  }
+  .cal-cell.blank { background: transparent; cursor: default; }
+  .cal-cell.future { color: var(--t3); cursor: default; background: var(--sunken); opacity: .55; }
+  .cal-cell.today { border-color: rgba(150,116,45,.32); font-weight: 700; }
+  .cal-cell.selc {
+    background: linear-gradient(135deg,#E7D3A4,#C8A96A 55%,#A9884A); color: #1A1508;
+    font-weight: 700; box-shadow: 0 10px 22px -10px rgba(150,116,45,.85);
+  }
+
+  .pillbtn {
+    white-space: nowrap; padding: 7px 13px; border-radius: 99px; font-size: 14px;
+    cursor: pointer; transition: .25s; border: 1px solid var(--hair);
+    background: var(--sunken); color: var(--t2);
+  }
+  .pillbtn.gold { background: rgba(150,116,45,.14); border-color: rgba(150,116,45,.32); color: var(--gold-deep); }
+
+  .aura { position:absolute; border-radius:50%; pointer-events:none; animation:auraDrift 14s ease-in-out infinite; }
+  .shimmer-el {
+    position:absolute; top:0; bottom:0; width:70px;
+    background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.22),rgba(255,255,255,0));
+    animation:shimmer 6s ease-in-out infinite;
+  }
+  .scanline {
+    position:absolute; left:26px; right:26px; height:2px; top:26px;
+    background:linear-gradient(90deg,rgba(150,116,45,0),#8A6A28,rgba(150,116,45,0));
+    box-shadow:0 0 22px 4px rgba(150,116,45,.55);
+    animation:scanSweep 2.2s cubic-bezier(.6,0,.4,1) infinite;
+  }
+
+  .loading { text-align:center; color:var(--t2); padding:80px 0; font-size:15px; }
   .spin {
-    width: 30px; height: 30px; border-radius: 50%; margin: 0 auto 12px;
-    border: 3px solid var(--line); border-top-color: var(--accent);
-    animation: sp 0.8s linear infinite;
-  }
-  @keyframes sp { to { transform: rotate(360deg); } }
-  .setupbox { line-height: 1.7; font-size: .9rem; }
-  .setupbox code { background: var(--bg); padding: 2px 7px; border-radius: 6px; font-size: .82rem; }
-
-  /* ---------- calculator ---------- */
-  .calc { margin-top: 8px; background: var(--bg); border-radius: 14px; padding: 10px; }
-  .calc-preview { text-align: right; font-size: .85rem; color: var(--muted); min-height: 1.3em; padding: 0 6px 6px; font-weight: 500; }
-  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .calc-grid button {
-    font-family: inherit; font-size: 1.15rem; padding: 12px 0;
-    border: none; border-radius: 10px; background: #fff; color: var(--ink);
-    cursor: pointer; box-shadow: 0 1px 3px rgba(35,38,59,.08); touch-action: manipulation;
-  }
-  .calc-grid button:active { transform: scale(.94); }
-  .calc-grid .op { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-  .calc-grid .eq { background: var(--accent); color: #fff; grid-column: span 2; font-weight: 600; }
-  .calc-grid .cl { background: var(--red-soft); color: var(--red); grid-column: span 2; font-size: .95rem; }
-
-  /* ---------- install banner ---------- */
-  .install-banner {
-    position: fixed; left: 12px; right: 12px;
-    bottom: calc(14px + env(safe-area-inset-bottom));
-    max-width: 536px; margin: 0 auto; z-index: 60;
-    background: #23263b; color: #fff; border-radius: 16px;
-    padding: 14px 16px; display: none; align-items: center; gap: 12px;
-    box-shadow: 0 10px 30px rgba(20,22,40,.4);
-    animation: slideup .3s ease;
-  }
-  @keyframes slideup { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
-  .install-banner.show { display: flex; }
-  .install-banner img { width: 40px; height: 40px; border-radius: 10px; }
-  .install-banner .txt { flex: 1; min-width: 0; }
-  .install-banner .t1 { font-size: .88rem; font-weight: 600; }
-  .install-banner .t2 { font-size: .74rem; opacity: .8; line-height: 1.45; }
-  .install-banner .t2 .ic { display: inline-block; }
-  .install-banner .close {
-    background: none; border: none; color: #fff; opacity: .6;
-    font-size: 1.2rem; cursor: pointer; padding: 4px 6px; align-self: flex-start;
+    width:34px; height:34px; border-radius:50%; margin:0 auto 14px;
+    border:2px solid var(--hair); border-top-color:var(--gold);
+    animation:ringSpin .9s linear infinite;
   }
 </style>
 </head>
 <body>
-<div class="wrap" id="app">
-  <div class="loading"><div class="spin"></div>กำลังโหลด…</div>
-</div>
-
-<div class="install-banner" id="installBanner">
-  <img src="icons/icon-192.png" alt="">
-  <div class="txt">
-    <div class="t1">ติดตั้ง "จดบัตร" เป็นแอป</div>
-    <div class="t2" id="installHint">ใช้งานเต็มจอ เปิดเร็ว เหมือนแอปจริง</div>
+<div class="phone">
+  <div class="content" id="app">
+    <div class="loading"><div class="spin"></div>กำลังโหลด…</div>
   </div>
-  <button class="btn btn-primary btn-sm" id="installBtn">ติดตั้ง</button>
-  <button class="close" id="installClose">×</button>
 </div>
+<div id="tabHost"></div>
+<div class="scrim-host" id="sheetHost" onclick="if(event.target===this)closeSheet()"></div>
+<div id="overlayHost"></div>
 
 <script>
 "use strict";
 const CFG = window.APP_CONFIG || {};
-let sb = null;
-let session = null;
-let cards = [];
-let txs = [];
-let view = { name: "cards", cardId: null };
-let expandedTx = null;
-let sortDesc = true; // true = ใหม่ไปเก่า
-let paySel = new Set();
-let editingTx = null;
-let editingCard = null;
-let pickedColor = "#5b6ee8";
-
-const COLORS = ["#5b6ee8", "#8b5cf6", "#0ea5b7", "#14a06a", "#e8842c", "#d9435f", "#2d3250", "#b8860b", "#c0c7d1"];
-
+let sb = null, session = null;
+let cards = [], txs = [], plans = [];
+const THM = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const THM_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const ICON = { food:'🍽', shopping:'🛍', clothes:'👕', shoes:'👟', bag:'👜', shopee:'🛒', fuel:'⛽', other:'📦' };
 const CATS = [
-  { k: "food", icon: "🍔", label: "อาหาร" },
-  { k: "shopping", icon: "🛍️", label: "ช้อปปิ้ง" },
-  { k: "clothes", icon: "👕", label: "เสื้อผ้า" },
-  { k: "shoes", icon: "👟", label: "รองเท้า" },
-  { k: "bag", icon: "👜", label: "กระเป๋า" },
-  { k: "shopee", icon: "🛒", label: "Shopee" },
-  { k: "fuel", icon: "⛽", label: "น้ำมัน" },
-  { k: "other", icon: "📦", label: "อื่นๆ" },
+  { k:'food', label:'อาหาร' }, { k:'shopping', label:'ช้อปปิ้ง' }, { k:'clothes', label:'เสื้อผ้า' },
+  { k:'shoes', label:'รองเท้า' }, { k:'bag', label:'กระเป๋า' }, { k:'shopee', label:'Shopee' },
+  { k:'fuel', label:'น้ำมัน' }, { k:'other', label:'อื่นๆ' }
 ];
-const catOf = (k) => CATS.find((c) => c.k === k) || CATS[CATS.length - 1];
-let pickedCat = "other";
+const CATCOLOR = { food:'#C8A96A', clothes:'#7F9FCF', shopee:'#CF7F8C', shoes:'#2E7D55', bag:'#B08CD8', fuel:'#A9640F', other:'#6A6A76', shopping:'#8A6A28' };
+const SKINS = [
+  'linear-gradient(140deg,#2B2418 0%,#4A3C22 34%,#171208 68%,#3A2F1B 100%)',
+  'linear-gradient(140deg,#101A2E 0%,#1E2E4E 38%,#0A101C 72%,#16233C 100%)',
+  'linear-gradient(140deg,#2A2C30 0%,#4C5057 36%,#191B1E 70%,#3A3E44 100%)',
+  'linear-gradient(140deg,#2A121A 0%,#4E2030 36%,#180A10 70%,#3C1826 100%)'
+];
+const PLAN_ICONS = ['💻','📱','👜','✈️','🛋️','📺','🎮','💍','⌚','📦'];
 
-// สีอ่อน (เช่น สีเงิน) ต้องใช้ตัวหนังสือเข้มถึงจะอ่านออก
-function isLightColor(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150;
-}
-function cardStyle(color) {
-  const c = color || "#5b6ee8";
-  const ink = isLightColor(c) ? "color:#2b3040" : "color:#fff";
-  return `background:linear-gradient(135deg, ${esc(c)}, ${esc(c)}cc); ${ink}`;
-}
+const S = {
+  screen: 'home', activeCard: null, addMode: 'pad',
+  pad: '', padCat: 'food', padCard: null, txName: '', txPlace: '', dayOffset: 0,
+  calY: 0, calM: 0, calTarget: 'add',
+  query: '', filter: 'all', sortAsc: false,
+  editTx: null, paySel: new Set(), scanImg: null,
+};
+
 const $ = (id) => document.getElementById(id);
-const app = $("app");
+const app = $('app');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const money = (n, dec) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: dec ? 2 : 0, maximumFractionDigits: dec ? 2 : 0 });
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const catLabel = (k) => (CATS.find(c => c.k === k) || { label:'อื่นๆ' }).label;
+const catIcon = (k) => ICON[k] || '📦';
+const skinOf = (c) => SKINS[(c && c.skin || 0) % SKINS.length];
+const cardById = (id) => cards.find(c => c.id === id);
 
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const money = (n) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const thDate = (s) => new Date(s + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
-const thDateFull = (d) => d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+function thShort(dstr) { const d = new Date(dstr + 'T00:00:00'); return d.getDate() + ' ' + THM[d.getMonth()]; }
+function thShortY(d) { return d.getDate() + ' ' + THM[d.getMonth()] + ' ' + String(d.getFullYear() + 543).slice(-2); }
+function dateFromOffset(o) { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - o); return d; }
+function greet() { const h = new Date().getHours(); return h < 12 ? 'สวัสดีตอนเช้า' : h < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น'; }
+function userName() { return session ? session.user.email.split('@')[0] : ''; }
 
-function authErrTh(m) {
-  m = String(m || "");
-  if (/invalid login credentials/i.test(m)) return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-  if (/already registered/i.test(m)) return "อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบแทน";
-  if (/at least 6/i.test(m) || /password/i.test(m) && /short|weak/i.test(m)) return "รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร";
-  if (/rate limit/i.test(m)) return "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่";
-  if (/not confirmed/i.test(m)) return "อีเมลนี้ยังไม่ได้ยืนยัน กรุณาเช็กกล่องจดหมาย";
-  return "เกิดข้อผิดพลาด: " + m;
+/* รอบบิล: ปิดรอบวันที่ statement_day; due เดือนถัดไปเมื่อ due_day <= statement_day */
+function cycleOf(card) {
+  const sd = card.statement_day, dd = card.due_day;
+  const t = new Date(), m = t.getMonth();
+  if (!sd) return { cycleRange: 'เดือน ' + THM[m], dueText: dd ? dd + ' ' + THM[m] : '–' };
+  const sDay = sd >= 28 ? 1 : sd + 1, sM = sd >= 28 ? m : (m + 11) % 12;
+  const r = { cycleRange: sDay + ' ' + THM[sM] + ' – ' + sd + ' ' + THM[m], dueText: '–' };
+  if (dd) r.dueText = dd + ' ' + THM[dd <= sd ? (m + 1) % 12 : m];
+  return r;
+}
+function nextDue() {
+  const t = new Date(); t.setHours(0,0,0,0);
+  let best = null;
+  cards.forEach((c) => {
+    if (!c.due_day) return;
+    for (let k = 0; k < 2; k++) {
+      const last = new Date(t.getFullYear(), t.getMonth() + k + 1, 0).getDate();
+      const d = new Date(t.getFullYear(), t.getMonth() + k, Math.min(c.due_day, last));
+      if (d >= t) { if (!best || d < best) best = d; break; }
+    }
+  });
+  if (!best) return null;
+  return { label: best.getDate() + ' ' + THM[best.getMonth()], days: Math.round((best - t) / 86400000) };
+}
+const unpaidOf = (id) => txs.filter(t => t.card_id === id && !t.paid).reduce((a,t) => a + Number(t.amount), 0);
+function monthTotal(offset) {
+  const t = new Date(); const y = t.getFullYear(), m = t.getMonth() + (offset || 0);
+  const s = ymd(new Date(y, m, 1)), e = ymd(new Date(y, m + 1, 0));
+  return txs.filter(x => x.tx_date >= s && x.tx_date <= e).reduce((a,x) => a + Number(x.amount), 0);
 }
 
 /* ---------- data ---------- */
 async function loadData() {
-  const [c, t] = await Promise.all([
-    sb.from("cards").select("*").order("created_at"),
-    sb.from("transactions").select("*").order("tx_date", { ascending: false }).order("created_at", { ascending: false }),
+  const [c, t, p] = await Promise.all([
+    sb.from('cards').select('*').order('created_at'),
+    sb.from('transactions').select('*').order('tx_date', { ascending:false }).order('created_at', { ascending:false }),
+    sb.from('plans').select('*').order('created_at'),
   ]);
-  if (c.error || t.error) { alert("โหลดข้อมูลไม่สำเร็จ: " + (c.error || t.error).message); return; }
-  cards = c.data; txs = t.data;
+  if (c.error || t.error) { alert('โหลดข้อมูลไม่สำเร็จ: ' + (c.error || t.error).message); return; }
+  cards = c.data; txs = t.data; plans = p.error ? [] : p.data;
+  if (!S.activeCard || !cardById(S.activeCard)) S.activeCard = cards[0] ? cards[0].id : null;
+  if (!S.padCard || !cardById(S.padCard)) S.padCard = cards[0] ? cards[0].id : null;
 }
 
-/* ---------- render ---------- */
+/* ---------- shells ---------- */
 function render() {
-  if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) return renderSetup();
-  if (!session) return renderAuth();
-  if (view.name === "detail") return renderDetail();
-  return renderCards();
+  if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) { $('tabHost').innerHTML = ''; return renderSetup(); }
+  if (!session) { $('tabHost').innerHTML = ''; return renderAuth(); }
+  renderTabs();
+  const R = { home: renderHome, list: renderList, add: renderAdd, stats: renderStats, cards: renderCards, plans: renderPlans };
+  (R[S.screen] || renderHome)();
+}
+window.go = (screen) => { S.screen = screen; render(); const c = document.querySelector('.content'); if (c) c.scrollTop = 0; };
+
+function renderTabs() {
+  const nav = [
+    { k:'home', icon:'◈', label:'หน้าแรก' }, { k:'list', icon:'☰', label:'รายการ' },
+    { k:'add', icon:'＋', label:'เพิ่ม' }, { k:'stats', icon:'◔', label:'วิเคราะห์' }, { k:'cards', icon:'▤', label:'บัตร' }
+  ];
+  $('tabHost').innerHTML = `<div class="tabgrad"></div><div class="tabwrap"><div class="tabbar">
+    ${nav.map(n => { const on = S.screen === n.k; return `
+      <button class="ti" onclick="go('${n.k}')">
+        <span class="tic" style="color:${on ? 'var(--gold)' : 'var(--t3)'}; transform:scale(${on ? 1.14 : 1});">${n.icon}</span>
+        <span class="tlb" style="color:${on ? 'var(--gold)' : 'var(--t3)'};">${n.label}</span>
+      </button>`; }).join('')}
+  </div></div>`;
 }
 
 function renderSetup() {
-  app.innerHTML = `
-    <div class="auth-hero"><div class="logo"></div><h2>จดบัตรเครดิต</h2><p>ยังตั้งค่าไม่เสร็จ</p></div>
-    <div class="panel setupbox">
-      แอปยังไม่ได้เชื่อมกับฐานข้อมูล Supabase<br>
-      กรุณาใส่ค่า <code>SUPABASE_URL</code> และ <code>SUPABASE_ANON_KEY</code> ในไฟล์ <code>config.js</code> แล้ว deploy ใหม่อีกครั้ง
-      (ดูขั้นตอนใน README.md)
-    </div>`;
+  app.innerHTML = `<div style="padding:60px 22px;">
+    <div class="screen-title">ยังตั้งค่าไม่เสร็จ</div>
+    <div style="margin-top:12px; font-size:16px; line-height:1.8; color:var(--t2);">กรุณาใส่ค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในไฟล์ config.js แล้ว deploy ใหม่ (ดู README.md)</div>
+  </div>`;
 }
 
+/* ---------- auth ---------- */
+let authMode = 'login';
 function renderAuth() {
   app.innerHTML = `
-    <div class="auth-hero"><div class="logo"></div><h2>จดบัตรเครดิต</h2><p>บันทึกรายการใช้จ่าย แยกบัตร แยกรอบบิล</p></div>
-    <div class="panel">
-      <div class="tabs">
-        <button id="tabLogin" class="active">เข้าสู่ระบบ</button>
-        <button id="tabSignup">สมัครใหม่</button>
+  <div style="padding:0 22px calc(40px + env(safe-area-inset-bottom)); min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; justify-content:center; position:relative;">
+    <div class="aura" style="width:420px; height:420px; left:50%; top:-14%; margin-left:-210px; background:radial-gradient(circle, rgba(150,116,45,.13) 0%, rgba(150,116,45,0) 62%); filter:blur(6px);"></div>
+    <div style="position:relative; text-align:center;" class="u-fadeup">
+      <div style="width:86px; height:56px; margin:0 auto; border-radius:12px; background:${SKINS[0]}; box-shadow:var(--card-shadow); position:relative; overflow:hidden;">
+        <div style="position:absolute; left:10px; top:10px; width:22px; height:16px; border-radius:4px; background:linear-gradient(140deg,rgba(255,255,255,.85),rgba(255,255,255,.35)); opacity:.8;"></div>
+        <div style="position:absolute; left:10px; bottom:9px; font-size:8px; letter-spacing:2px; color:rgba(255,255,255,.75);">••••</div>
       </div>
-      <div class="msg" id="authMsg"></div>
-      <form id="authForm">
-        <div class="field"><label>อีเมล</label><input type="email" id="aEmail" required autocomplete="email" placeholder="you@example.com"></div>
-        <div class="field"><label>รหัสผ่าน (อย่างน้อย 6 ตัว)</label><input type="password" id="aPass" required minlength="6" autocomplete="current-password" placeholder="••••••••"></div>
-        <button class="btn btn-primary btn-block" id="aBtn" type="submit">เข้าสู่ระบบ</button>
+      <div class="eyebrow" style="margin-top:22px; color:rgba(150,116,45,.72); letter-spacing:1.6px;">Portfolio</div>
+      <div style="margin-top:6px; font-size:24px; font-weight:600; color:var(--t1);">จดบัตรเครดิต</div>
+      <div style="margin-top:6px; font-size:15.5px; color:var(--t2); line-height:1.7;">บันทึกค่าใช้จ่ายทุกใบ ในที่เดียว</div>
+    </div>
+    <div style="position:relative; margin-top:30px;" class="u-fadeup">
+      <div style="display:flex; gap:6px; padding:4px; border-radius:16px;" class="raised">
+        <button id="tabLogin" class="authTab" style="flex:1; padding:10px; border-radius:12px; border:1px solid transparent; background:transparent; font-size:15px; cursor:pointer; transition:.3s;">เข้าสู่ระบบ</button>
+        <button id="tabSignup" class="authTab" style="flex:1; padding:10px; border-radius:12px; border:1px solid transparent; background:transparent; font-size:15px; cursor:pointer; transition:.3s;">สมัครใหม่</button>
+      </div>
+      <div id="authMsg" style="display:none; margin-top:14px; font-size:14.5px; border-radius:14px; padding:12px 14px; line-height:1.6;"></div>
+      <form id="authForm" style="margin-top:14px; display:flex; flex-direction:column; gap:9px;">
+        <div class="fieldrow"><label>อีเมล</label><input type="email" id="aEmail" required autocomplete="email" placeholder="you@example.com"></div>
+        <div class="fieldrow"><label>รหัสผ่าน</label><input type="password" id="aPass" required minlength="6" autocomplete="current-password" placeholder="อย่างน้อย 6 ตัว"></div>
+        <button class="cta" id="aBtn" type="submit" style="margin-top:9px;">เข้าสู่ระบบ</button>
       </form>
-    </div>`;
-  let mode = "login";
+    </div>
+  </div>`;
   const setMode = (m) => {
-    mode = m;
-    $("tabLogin").classList.toggle("active", m === "login");
-    $("tabSignup").classList.toggle("active", m === "signup");
-    $("aBtn").textContent = m === "login" ? "เข้าสู่ระบบ" : "สมัครสมาชิก";
+    authMode = m;
+    const on = (el, v) => { el.style.background = v ? 'var(--gold-tint-strong)' : 'transparent'; el.style.borderColor = v ? 'var(--gold-bd)' : 'transparent'; el.style.color = v ? 'var(--gold-deep)' : 'var(--t3)'; el.style.fontWeight = v ? '600' : '400'; };
+    on($('tabLogin'), m === 'login'); on($('tabSignup'), m === 'signup');
+    $('aBtn').textContent = m === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก';
   };
-  $("tabLogin").onclick = () => setMode("login");
-  $("tabSignup").onclick = () => setMode("signup");
-  $("authForm").onsubmit = async (e) => {
+  $('tabLogin').onclick = () => setMode('login');
+  $('tabSignup').onclick = () => setMode('signup');
+  setMode(authMode);
+  $('authForm').onsubmit = async (e) => {
     e.preventDefault();
-    const email = $("aEmail").value.trim(), password = $("aPass").value;
-    const msg = $("authMsg"); msg.className = "msg"; $("aBtn").disabled = true;
+    const email = $('aEmail').value.trim(), password = $('aPass').value;
+    const msg = $('authMsg'); msg.style.display = 'none'; $('aBtn').disabled = true;
+    const show = (t, ok) => { msg.style.display = 'block'; msg.textContent = t;
+      msg.style.background = ok ? 'rgba(46,125,85,.1)' : 'rgba(169,100,15,.1)';
+      msg.style.color = ok ? 'var(--success)' : 'var(--warn)';
+      msg.style.border = '1px solid ' + (ok ? 'rgba(46,125,85,.25)' : 'rgba(169,100,15,.25)'); };
     try {
-      if (mode === "login") {
+      if (authMode === 'login') {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
-        if (!data.session) {
-          msg.className = "msg ok";
-          msg.textContent = "สมัครแล้ว! ระบบส่งลิงก์ยืนยันไปที่อีเมลของคุณ กรุณากดยืนยันก่อนเข้าสู่ระบบ";
-        }
+        if (!data.session) show('สมัครแล้ว! ระบบส่งลิงก์ยืนยันไปที่อีเมล กรุณากดยืนยันก่อนเข้าสู่ระบบ', true);
       }
     } catch (err) {
-      msg.className = "msg err"; msg.textContent = authErrTh(err.message);
+      const m = String(err.message || '');
+      show(/invalid login/i.test(m) ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
+        : /already registered/i.test(m) ? 'อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบแทน'
+        : /rate limit/i.test(m) ? 'ลองบ่อยเกินไป กรุณารอสักครู่'
+        : /not confirmed/i.test(m) ? 'อีเมลนี้ยังไม่ได้ยืนยัน กรุณาเช็กกล่องจดหมาย'
+        : 'เกิดข้อผิดพลาด: ' + m, false);
     }
-    $("aBtn").disabled = false;
+    $('aBtn').disabled = false;
   };
 }
 
-function cardUnpaid(cardId) {
-  return txs.filter((t) => t.card_id === cardId && !t.paid).reduce((s, t) => s + Number(t.amount), 0);
-}
-
-function renderCards() {
-  const totalUnpaid = txs.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
-  const now = new Date();
-  const ms = ymd(new Date(now.getFullYear(), now.getMonth(), 1));
-  const me = ymd(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-  const monthTotal = txs.filter((t) => t.tx_date >= ms && t.tx_date <= me).reduce((s, t) => s + Number(t.amount), 0);
-
-  let cardsHtml = cards.map((c) => {
-    const unpaid = cardUnpaid(c.id);
-    const cnt = txs.filter((t) => t.card_id === c.id).length;
-    return `
-    <div class="cc" style="${cardStyle(c.color)}" onclick="openCard('${c.id}')">
-      <div class="chip"></div>
-      <div class="name">${esc(c.name)}</div>
-      <div class="meta">${cnt} รายการ</div>
-      <div class="row">
-        <div><div class="lbl">ค้างจ่ายทั้งหมด</div>
-          ${unpaid > 0 ? `<div class="amt">฿${money(unpaid)}</div>` : `<div class="amt zero">จ่ายครบแล้ว ✓</div>`}
-        </div>
-        <div style="font-size:1.3rem;opacity:.9">›</div>
-      </div>
-    </div>`;
-  }).join("");
-
-  if (!cards.length) {
-    cardsHtml = `<div class="empty"><div class="big">💳</div>ยังไม่มีบัตร<br>กดปุ่ม + ด้านล่างเพื่อเพิ่มบัตรใบแรก</div>`;
-  }
-
-  app.innerHTML = `
-    <header class="top">
-      <h1>จด<span>บัตรเครดิต</span></h1>
-      <div class="userbox"><span class="email">${esc(session.user.email)}</span>
-        <button class="btn btn-ghost btn-sm" onclick="logout()">ออก</button></div>
-    </header>
-    <div class="summary">
-      <div class="sumbox"><div class="t">ค้างจ่ายรวมทุกบัตร</div><div class="v ${totalUnpaid > 0 ? "red" : "green"}">฿${money(totalUnpaid)}</div></div>
-      <div class="sumbox"><div class="t">ใช้ไปเดือนนี้</div><div class="v">฿${money(monthTotal)}</div></div>
-    </div>
-    ${cards.length ? `<div class="toolbar"><button class="btn btn-soft btn-sm" onclick="exportCSV()">⬇ ส่งออก CSV ทั้งหมด</button></div>` : ""}
-    ${cardsHtml}
-    <button class="fab" onclick="openCardModal()" title="เพิ่มบัตร">+</button>
-    ${modalHtml()}`;
-}
-
-function renderDetail() {
-  const card = cards.find((c) => c.id === view.cardId);
-  if (!card) { view = { name: "cards", cardId: null }; return render(); }
-  const list = txs.filter((t) => t.card_id === card.id).slice().sort((a, b) => {
-    const cmp = a.tx_date.localeCompare(b.tx_date) || String(a.created_at || "").localeCompare(String(b.created_at || ""));
-    return sortDesc ? -cmp : cmp;
-  });
-  const total = list.reduce((s, t) => s + Number(t.amount), 0);
-  const unpaid = list.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
-  const unpaidCnt = list.filter((t) => !t.paid).length;
-
-  const rows = list.map((t) => {
-    const cat = catOf(t.category);
-    const open = expandedTx === t.id;
-    return `
-    <div class="tx ${t.paid ? "paid" : ""}${open ? " open" : ""}">
-      <div class="txrow" onclick="toggleExpand('${t.id}')">
-        <div class="chk" onclick="event.stopPropagation();togglePaid('${t.id}', ${!t.paid})">${t.paid ? "✓" : ""}</div>
-        <div class="txcat" title="${cat.label}">${cat.icon}</div>
-        <div class="info">
-          <div class="n">${esc(t.name)}</div>
-          <div class="d">${thDate(t.tx_date)}${t.place ? " · " + esc(t.place) : ""}</div>
-        </div>
-        <div class="right"><div class="a">฿${money(t.amount)}</div></div>
-        <div class="chev">▼</div>
-      </div>
-      ${open ? `
-      <div class="txdetail">
-        <div class="dl"><span>วันที่</span><b>${thDateFull(new Date(t.tx_date + "T00:00:00"))}</b></div>
-        <div class="dl"><span>หมวดหมู่</span><b>${cat.icon} ${cat.label}</b></div>
-        <div class="dl"><span>สถานที่</span><b>${t.place ? esc(t.place) : "—"}</b></div>
-        <div class="dl"><span>ราคา</span><b>฿${money(t.amount)}</b></div>
-        <div class="dl"><span>สถานะ</span><b class="${t.paid ? "stat-paid" : "stat-unpaid"}">${t.paid ? "จ่ายแล้ว ✓" : "ยังไม่จ่าย"}</b></div>
-        <div class="dl-actions">
-          <button class="btn btn-soft btn-sm" onclick="openTxModal('${t.id}')">✏️ แก้ไข</button>
-          <button class="btn btn-danger-soft btn-sm" onclick="delTx('${t.id}')">🗑 ลบ</button>
-        </div>
-      </div>` : ""}
-    </div>`;
-  }).join("");
-
-  app.innerHTML = `
-    <div class="backrow">
-      <button class="btn btn-ghost" onclick="backHome()">‹ กลับ</button>
-      <div style="flex:1"></div>
-      <button class="btn btn-ghost btn-sm" onclick="openCardModal('${card.id}')">แก้ไขบัตร</button>
-      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="delCard('${card.id}')">ลบบัตร</button>
-    </div>
-    <div class="cc" style="${cardStyle(card.color)}; cursor:default">
-      <div class="chip"></div>
-      <div class="name">${esc(card.name)}</div>
-      <div class="meta">${list.length} รายการ</div>
-      <div class="row">
-        <div><div class="lbl">ยอดทั้งหมด</div><div class="amt">฿${money(total)}</div></div>
-        <div style="text-align:right"><div class="lbl">ค้างจ่าย</div><div class="amt">฿${money(unpaid)}</div></div>
-      </div>
-    </div>
-    ${unpaidCnt > 0 ? `<button class="btn btn-green btn-block payall" onclick="openPayModal('${card.id}')">💳 จ่ายบิล (ค้าง ${unpaidCnt} รายการ · ฿${money(unpaid)})</button>` : ""}
-    <div class="toolbar" style="margin-top:10px">
-      <button class="btn btn-soft btn-sm" onclick="toggleSort()">⇅ เรียง: ${sortDesc ? "ใหม่ → เก่า" : "เก่า → ใหม่"}</button>
-      <button class="btn btn-soft btn-sm" onclick="exportCSV('${card.id}')">⬇ ส่งออก CSV บัตรนี้</button>
-    </div>
-    <div class="txlist">
-      ${rows || `<div class="empty"><div class="big">🧾</div>ยังไม่มีรายการ<br>กดปุ่ม + เพื่อจดรายการ</div>`}
-    </div>
-    <button class="fab" onclick="openTxModal()" title="จดรายการ">+</button>
-    ${modalHtml()}`;
-}
-
-/* ---------- modals ---------- */
-function modalHtml() {
+/* ---------- tx row (home + list) ---------- */
+function txRowHtml(t, i, withSkin) {
+  const card = cardById(t.card_id);
+  const meta = thShort(t.tx_date) + (t.place ? ' · ' + esc(t.place) : '');
   return `
-  <div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
-    <div class="modal" id="modalBody"></div>
+  <div class="txr" style="animation:fadeUp .45s cubic-bezier(.2,.8,.2,1) both; animation-delay:${Math.min(i*0.035, .4).toFixed(3)}s;" onclick="openTxSheet('${t.id}')">
+    <div class="ic">${catIcon(t.category)}</div>
+    <div style="flex:1; min-width:0;">
+      <div class="nm ellip">${esc(t.name)}</div>
+      <div class="mt" style="display:flex; align-items:center; gap:7px;">
+        <span class="ellip" style="min-width:0;">${meta}</span>
+        ${withSkin && card ? `<span style="width:15px; height:10px; border-radius:2px; flex:0 0 auto; display:block; background:${skinOf(card)};"></span>` : ''}
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div class="amt tnum">฿${money(t.amount, true)}</div>
+      <div class="st" style="color:${t.paid ? 'rgba(46,125,85,.95)' : 'rgba(169,100,15,.95)'};">${t.paid ? 'จ่ายแล้ว' : 'ค้างจ่าย'}</div>
+    </div>
   </div>`;
 }
-function closeModal() { $("modalBg").classList.remove("open"); }
 
-window.openCardModal = (cardId) => {
-  editingCard = cardId ? cards.find((c) => c.id === cardId) : null;
-  pickedColor = editingCard ? editingCard.color : COLORS[cards.length % COLORS.length];
-  $("modalBody").innerHTML = `
-    <h3>${editingCard ? "แก้ไขบัตร" : "เพิ่มบัตรใหม่"}</h3>
-    <form id="cardForm">
-      <div class="field"><label>ชื่อบัตร</label>
-        <input id="cName" required maxlength="60" placeholder="เช่น KBank แมว, SCB Planet" value="${editingCard ? esc(editingCard.name) : ""}"></div>
-      <div class="field"><label>สีบัตร</label>
-        <div class="colorpick">${COLORS.map((c) => `<div class="c ${c === pickedColor ? "sel" : ""}" style="background:${c}" onclick="pickColor(this,'${c}')"></div>`).join("")}</div>
-      </div>
-      <div class="btnrow">
-        <button type="button" class="btn btn-soft" onclick="closeModal()">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary">${editingCard ? "บันทึก" : "เพิ่มบัตร"}</button>
-      </div>
-    </form>`;
-  $("modalBg").classList.add("open");
-  $("cardForm").onsubmit = saveCard;
-};
-window.pickColor = (el, c) => {
-  pickedColor = c;
-  el.parentElement.querySelectorAll(".c").forEach((x) => x.classList.remove("sel"));
-  el.classList.add("sel");
-};
-async function saveCard(e) {
-  e.preventDefault();
-  const payload = {
-    name: $("cName").value.trim(),
-    color: pickedColor,
-  };
-  const q = editingCard
-    ? sb.from("cards").update(payload).eq("id", editingCard.id)
-    : sb.from("cards").insert(payload);
-  const { error } = await q;
-  if (error) return alert("บันทึกไม่สำเร็จ: " + error.message);
-  closeModal(); await loadData(); render();
-}
+/* ---------- HOME ---------- */
+let heroRAF = 0;
+function renderHome() {
+  const thisM = monthTotal(0), lastM = monthTotal(-1);
+  const diff = thisM - lastM;
+  const pct = lastM > 0 ? Math.abs(diff) / lastM * 100 : 0;
+  const down = diff <= 0;
+  const due = nextDue();
+  const totalUnpaid = cards.reduce((a,c) => a + unpaidOf(c.id), 0);
+  const t = new Date();
 
-window.openTxModal = (txId) => {
-  editingTx = txId ? txs.find((t) => t.id === txId) : null;
-  pickedCat = editingTx ? (editingTx.category || "other") : "other";
-  $("modalBody").innerHTML = `
-    <h3>${editingTx ? "แก้ไขรายการ" : "จดรายการใหม่"}</h3>
-    <form id="txForm">
-      <div class="field"><label>วันที่</label>
-        <input type="date" id="tDate" required value="${editingTx ? editingTx.tx_date : ymd(new Date())}"></div>
-      <div class="field"><label>ชื่อรายการ</label>
-        <input id="tName" required maxlength="120" placeholder="เช่น ค่าอาหาร, เติมน้ำมัน" value="${editingTx ? esc(editingTx.name) : ""}"></div>
-      <div class="field"><label>ราคา (บาท) — แตะเพื่อเปิดเครื่องคิดเลข</label>
-        <input id="tAmount" readonly inputmode="none" placeholder="0.00" value="${editingTx ? editingTx.amount : ""}" onclick="openCalc()">
-        <div class="calc" id="calc" style="display:none">
-          <div class="calc-preview" id="calcPrev"></div>
-          <div class="calc-grid">
-            <button type="button" onclick="calcKey('7')">7</button><button type="button" onclick="calcKey('8')">8</button><button type="button" onclick="calcKey('9')">9</button><button type="button" class="op" onclick="calcKey('÷')">÷</button>
-            <button type="button" onclick="calcKey('4')">4</button><button type="button" onclick="calcKey('5')">5</button><button type="button" onclick="calcKey('6')">6</button><button type="button" class="op" onclick="calcKey('×')">×</button>
-            <button type="button" onclick="calcKey('1')">1</button><button type="button" onclick="calcKey('2')">2</button><button type="button" onclick="calcKey('3')">3</button><button type="button" class="op" onclick="calcKey('−')">−</button>
-            <button type="button" onclick="calcKey('0')">0</button><button type="button" onclick="calcKey('.')">.</button><button type="button" class="op" onclick="calcKey('⌫')">⌫</button><button type="button" class="op" onclick="calcKey('+')">+</button>
-            <button type="button" class="cl" onclick="calcKey('C')">ล้าง (C)</button><button type="button" class="eq" onclick="calcKey('=')">=</button>
+  const deltaHtml = lastM > 0 ? `
+    <span style="display:inline-flex; align-items:center; gap:5px; font-size:15px; color:${down ? 'var(--success)' : 'var(--warn)'}; background:${down ? 'rgba(46,125,85,.1)' : 'rgba(169,100,15,.1)'}; border:1px solid ${down ? 'rgba(46,125,85,.2)' : 'rgba(169,100,15,.2)'}; padding:3px 9px; border-radius:99px;">${down ? '↓' : '↑'} ${pct.toFixed(1)}%</span>
+    <span style="font-size:15px; color:var(--t2);">${down ? 'น้อยกว่า' : 'มากกว่า'}เดือนก่อน ฿${money(Math.abs(diff))}</span>`
+    : `<span style="font-size:15px; color:var(--t2);">เริ่มบันทึกเดือนแรกของคุณ</span>`;
+
+  const carouselHtml = cards.length ? cards.map((c, i) => {
+    const on = c.id === S.activeCard;
+    const cyc = cycleOf(c);
+    return `
+    <div onclick="pickActive('${c.id}')" style="position:relative; flex:0 0 296px; height:210px; border-radius:20px; overflow:hidden; scroll-snap-align:center; cursor:pointer; transition:transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .5s; transform:translateY(${on ? -6 : 0}px) scale(${on ? 1 : 0.955}); box-shadow:var(--card-shadow), 0 0 0 1px ${on ? 'rgba(150,116,45,.55)' : 'var(--hair)'};">
+      <div style="position:absolute; inset:0; background:${skinOf(c)};"></div>
+      <div style="position:absolute; inset:0; background:linear-gradient(115deg, rgba(255,255,255,0) 38%, rgba(255,255,255,.14) 48%, rgba(255,255,255,0) 58%);"></div>
+      <div class="shimmer-el" style="animation-delay:${(i*1.4).toFixed(1)}s;"></div>
+      <div style="position:relative; box-sizing:border-box; height:100%; padding:17px 18px 18px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; color:#fff;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+          <div style="min-width:0;">
+            <div style="font-size:12.5px; letter-spacing:2px; text-transform:uppercase; opacity:.7; white-space:nowrap;">${esc(c.bank || 'CARD')}</div>
+            <div class="ellip" style="margin-top:3px; font-size:16px; font-weight:600; letter-spacing:.1px;">${esc(c.name)}</div>
           </div>
-          <button type="button" class="btn btn-green btn-block" style="margin-top:10px" onclick="confirmCalcAmount()">✓ ใช้ยอดนี้</button>
+          <div style="flex:0 0 auto; width:34px; height:25px; border-radius:5px; background:linear-gradient(140deg, rgba(255,255,255,.85), rgba(255,255,255,.35)); opacity:.8;"></div>
+        </div>
+        <div>
+          <div class="tnum" style="font-size:15px; letter-spacing:2.6px; opacity:.78;">•••• ${esc(c.last4 || '····')}</div>
+          <div style="margin-top:10px; padding-top:11px; border-top:1px solid rgba(255,255,255,.22); display:flex; align-items:flex-end; gap:12px;">
+            <div style="flex:1 1 auto; min-width:0;">
+              <div style="font-size:12.5px; letter-spacing:1.2px; opacity:.72; line-height:1.5; white-space:nowrap;">ยอดค้างชำระ</div>
+              <div style="margin-top:1px; display:flex; align-items:baseline; gap:3px;">
+                <span style="font-size:16px; opacity:.75;">฿</span>
+                <span class="tnum" style="font-size:27px; font-weight:600; letter-spacing:-.6px; line-height:1.25;">${money(unpaidOf(c.id))}</span>
+              </div>
+            </div>
+            <div style="flex:0 0 auto; text-align:right; padding-left:12px; border-left:1px solid rgba(255,255,255,.2);">
+              <div style="font-size:12px; letter-spacing:.8px; opacity:.6; line-height:1.5; white-space:nowrap;">รอบบิล</div>
+              <div class="tnum" style="font-size:13.5px; font-weight:500; line-height:1.45; opacity:.95; white-space:nowrap;">${cyc.cycleRange}</div>
+              <div style="margin-top:4px; font-size:12.5px; line-height:1.45; opacity:.65; white-space:nowrap;">ครบกำหนด <span style="opacity:1; font-weight:600;">${cyc.dueText}</span></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="field"><label>หมวดหมู่</label>
-        <div class="catpick" id="catPick">
-          ${CATS.map((c) => `<button type="button" class="cp ${c.k === pickedCat ? "sel" : ""}" onclick="pickCat('${c.k}')">${c.icon} ${c.label}</button>`).join("")}
-        </div>
-      </div>
-      <div class="field"><label>สถานที่ (ไม่บังคับ)</label>
-        <input id="tPlace" maxlength="120" placeholder="เช่น Lotus, Shopee" value="${editingTx && editingTx.place ? esc(editingTx.place) : ""}"></div>
-      ${editingTx ? `
-      <div class="field"><label>สถานะการจ่าย</label>
-        <label class="paidtoggle">
-          <input type="checkbox" id="tPaid" ${editingTx.paid ? "checked" : ""}>
-          <span>จ่ายแล้ว<small>เอาเครื่องหมายถูกออกแล้วกดบันทึก เพื่อยกเลิกการจ่าย</small></span>
-        </label>
-      </div>` : ""}
-      <div class="btnrow">
-        <button type="button" class="btn btn-soft" onclick="closeModal()">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary">${editingTx ? "บันทึก" : "จดรายการ"}</button>
-      </div>
-    </form>`;
-  $("modalBg").classList.add("open");
-  $("txForm").onsubmit = saveTx;
-};
-window.pickCat = (k) => {
-  pickedCat = k;
-  document.querySelectorAll("#catPick .cp").forEach((b, i) => b.classList.toggle("sel", CATS[i].k === k));
-};
-
-/* ---------- calculator ---------- */
-function evalExpr(s) {
-  if (!s) return null;
-  const e = String(s).replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
-  if (!/^[\d+\-*/.]+$/.test(e)) return null;
-  try {
-    const r = Function('"use strict";return (' + e + ")")();
-    return typeof r === "number" && isFinite(r) ? Math.round(r * 100) / 100 : null;
-  } catch { return null; }
-}
-function updCalcPrev() {
-  const v = $("tAmount").value;
-  const prev = $("calcPrev");
-  if (/[+×÷−*/-]/.test(v.slice(1))) {
-    const r = evalExpr(v);
-    prev.textContent = r != null ? "= " + money(r) : "…";
-  } else prev.textContent = v || "0";
-}
-window.openCalc = () => { $("calc").style.display = "block"; updCalcPrev(); };
-window.calcKey = (k) => {
-  const inp = $("tAmount");
-  let v = inp.value;
-  if (k === "C") v = "";
-  else if (k === "⌫") v = v.slice(0, -1);
-  else if (k === "=") {
-    const r = evalExpr(v);
-    if (r != null) v = String(r);
-  } else v += k;
-  inp.value = v;
-  updCalcPrev();
-};
-window.confirmCalcAmount = () => {
-  const r = evalExpr($("tAmount").value);
-  if (r == null || r <= 0) return alert("จำนวนไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
-  $("tAmount").value = String(r);
-  $("calc").style.display = "none";
-};
-
-async function saveTx(e) {
-  e.preventDefault();
-  const amount = evalExpr($("tAmount").value);
-  if (amount == null || amount <= 0) return alert("กรุณาใส่ราคาให้ถูกต้อง (กด = เพื่อคำนวณผลก่อนบันทึกได้)");
-  const payload = {
-    tx_date: $("tDate").value,
-    name: $("tName").value.trim(),
-    amount,
-    place: $("tPlace").value.trim() || null,
-    category: pickedCat,
-  };
-  if (editingTx) payload.paid = $("tPaid").checked; // ยกเลิก/ยืนยันการจ่ายได้จากหน้าแก้ไข
-  const q = editingTx
-    ? sb.from("transactions").update(payload).eq("id", editingTx.id)
-    : sb.from("transactions").insert({ ...payload, card_id: view.cardId });
-  const { error } = await q;
-  if (error) return alert("บันทึกไม่สำเร็จ: " + error.message);
-  closeModal(); await loadData(); render();
-}
-
-/* ---------- actions ---------- */
-window.openCard = (id) => { view = { name: "detail", cardId: id }; expandedTx = null; render(); };
-window.backHome = () => { view = { name: "cards", cardId: null }; expandedTx = null; render(); };
-window.logout = async () => { await sb.auth.signOut(); };
-
-window.togglePaid = async (id, paid) => {
-  // ติ๊กในแถวใช้ "จ่าย" ได้อย่างเดียว — การยกเลิกการจ่ายต้องทำผ่านหน้าแก้ไข
-  if (!paid) {
-    alert('หากต้องการยกเลิกการจ่าย ให้กดที่รายการ → "✏️ แก้ไข" → เอาเครื่องหมายถูกออก → บันทึก');
-    return;
-  }
-  const t = txs.find((x) => x.id === id);
-  if (t) t.paid = paid;
-  render();
-  const { error } = await sb.from("transactions").update({ paid }).eq("id", id);
-  if (error) { alert("อัปเดตไม่สำเร็จ: " + error.message); await loadData(); render(); }
-};
-
-window.toggleExpand = (id) => { expandedTx = expandedTx === id ? null : id; render(); };
-window.toggleSort = () => { sortDesc = !sortDesc; render(); };
-
-/* ---------- pay bill: select items then confirm ---------- */
-window.openPayModal = (cardId) => {
-  const list = txs.filter((t) => t.card_id === cardId && !t.paid);
-  if (!list.length) return;
-  paySel = new Set(list.map((t) => t.id)); // เริ่มต้นเลือกทุกรายการ
-  $("modalBody").innerHTML = `
-    <h3>💳 เลือกรายการที่จะจ่าย</h3>
-    <div class="paylist">
-      ${list.map((t) => `
-      <div class="payrow sel" id="pay-${t.id}" onclick="togglePaySel('${t.id}')">
-        <div class="chk">✓</div>
-        <div class="pn">${esc(t.name)}<small>${thDate(t.tx_date)}${t.place ? " · " + esc(t.place) : ""}</small></div>
-        <div class="pa">฿${money(t.amount)}</div>
-      </div>`).join("")}
-    </div>
-    <div class="paytotal" id="payTotal"></div>
-    <div class="btnrow">
-      <button type="button" class="btn btn-soft" onclick="closeModal()">ยกเลิก</button>
-      <button type="button" class="btn btn-green" id="payConfirmBtn" onclick="confirmPay()"></button>
     </div>`;
-  $("modalBg").classList.add("open");
+  }).join('') : `
+    <div onclick="openCardSheet()" style="flex:0 0 296px; height:210px; border-radius:20px; border:1px dashed var(--gold-bd); background:var(--gold-tint); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; cursor:pointer; color:var(--gold-deep);">
+      <span style="font-size:28px;">＋</span><span style="font-size:16px;">เพิ่มบัตรใบแรก</span>
+    </div>`;
+
+  const recent = txs.slice(0, 5);
+  app.innerHTML = `
+  <div style="padding:26px 22px 130px;" class="u-fadein">
+    <div class="u-fadeup" style="display:flex; align-items:flex-start; justify-content:space-between;">
+      <div style="min-width:0;">
+        <div class="eyebrow" style="color:rgba(150,116,45,.72); letter-spacing:1.6px;">Portfolio</div>
+        <div class="ellip" style="margin-top:5px; font-size:18.5px; color:var(--t1); font-weight:600;">${greet()}, ${esc(userName())}</div>
+      </div>
+      <div onclick="logout()" title="ออกจากระบบ" style="width:42px; height:42px; flex:0 0 42px; border-radius:50%; background:linear-gradient(145deg,#FFFFFF,#EFEADD); border:1px solid rgba(150,116,45,.3); display:flex; align-items:center; justify-content:center; color:#8A6A28; font-family:'Instrument Serif',serif; font-size:20.5px; cursor:pointer;">${esc(userName().charAt(0).toUpperCase() || 'ธ')}</div>
+    </div>
+
+    <div style="margin-top:30px; animation:fadeUp .6s .06s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+        <span style="white-space:nowrap; font-size:14.5px; letter-spacing:1.4px; color:var(--t2);">ยอดใช้จ่ายเดือนนี้</span>
+        <span style="font-size:13px; padding:2px 8px; border-radius:99px; background:var(--gold-tint); border:1px solid rgba(150,116,45,.24); color:var(--gold);">${THM[t.getMonth()]} ${t.getFullYear() + 543}</span>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px; white-space:nowrap;">
+        <span style="font-family:'Instrument Serif',serif; font-size:34px; color:var(--gold); line-height:1;">฿</span>
+        <span id="heroVal" class="tnum" style="font-size:56px; font-weight:400; letter-spacing:-0.6px; line-height:1;">0.00</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap;">${deltaHtml}</div>
+    </div>
+
+    <div style="margin-top:22px; display:flex; gap:10px; animation:fadeUp .6s .12s cubic-bezier(.2,.8,.2,1) both;">
+      <div class="raised" style="flex:1; padding:14px 15px; border-radius:18px;">
+        <div style="font-size:14px; color:var(--t2); letter-spacing:.4px;">ค้างจ่ายรวมทุกใบ</div>
+        <div class="tnum" style="margin-top:5px; font-size:22.5px; font-weight:500; color:var(--t1);">฿${money(totalUnpaid)}</div>
+      </div>
+      <div class="raised" style="flex:1; padding:14px 15px; border-radius:18px;">
+        <div style="font-size:14px; color:var(--t2); letter-spacing:.4px;">ครบกำหนดถัดไป</div>
+        <div style="margin-top:5px; display:flex; align-items:baseline; gap:6px; white-space:nowrap;">
+          <span style="font-size:22.5px; font-weight:500; color:var(--t1);">${due ? due.label : '–'}</span>
+          ${due ? `<span style="font-size:14px; color:var(--warn);">${due.days === 0 ? 'วันนี้' : 'อีก ' + due.days + ' วัน'}</span>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:26px; display:flex; align-items:center; justify-content:space-between; animation:fadeUp .6s .18s cubic-bezier(.2,.8,.2,1) both;">
+      <span class="eyebrow">My Cards</span>
+      <span onclick="go('cards')" style="white-space:nowrap; font-size:15px; color:var(--gold); cursor:pointer;">จัดการบัตร ›</span>
+    </div>
+
+    <div style="margin:12px -22px 0; padding:6px 22px 16px; display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory; animation:fadeUp .65s .22s cubic-bezier(.2,.8,.2,1) both;">
+      ${carouselHtml}
+    </div>
+
+    <div style="display:flex; gap:9px; margin-top:4px; animation:fadeUp .6s .28s cubic-bezier(.2,.8,.2,1) both;">
+      ${[['＋','เพิ่มรายการ','add'],['✓','จ่ายบิล','cards'],['◷','ผ่อน 0%','plans']].map(q => `
+      <div onclick="go('${q[2]}')" class="raised" style="flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; padding:14px 8px; border-radius:16px; cursor:pointer; transition:.25s;">
+        <span style="font-size:20.5px; color:var(--gold);">${q[0]}</span>
+        <span style="font-size:14px; color:var(--t2);">${q[1]}</span>
+      </div>`).join('')}
+    </div>
+
+    <div style="margin-top:28px; display:flex; align-items:center; justify-content:space-between; animation:fadeUp .6s .32s cubic-bezier(.2,.8,.2,1) both;">
+      <span class="eyebrow">รายการล่าสุด</span>
+      <span onclick="go('list')" style="white-space:nowrap; font-size:15px; color:var(--gold); cursor:pointer;">ดูทั้งหมด ›</span>
+    </div>
+    <div style="margin-top:12px; display:flex; flex-direction:column; gap:2px; animation:fadeUp .6s .36s cubic-bezier(.2,.8,.2,1) both;">
+      ${recent.length ? recent.map((t2, i) => txRowHtml(t2, i, false)).join('')
+        : `<div style="padding:34px 0; text-align:center; color:var(--t2); font-size:15.5px;">ยังไม่มีรายการ — กดแท็บ ＋ เพื่อเริ่มจด</div>`}
+    </div>
+  </div>`;
+
+  // hero count-up 1400ms ease-out
+  cancelAnimationFrame(heroRAF);
+  const target = thisM;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || target === 0) { $('heroVal').textContent = money(target, true); }
+  else {
+    const t0 = performance.now(), dur = 1400;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+      const el = $('heroVal'); if (!el) return;
+      el.textContent = money(target * e, true);
+      if (k < 1) heroRAF = requestAnimationFrame(step);
+    };
+    heroRAF = requestAnimationFrame(step);
+  }
+}
+window.pickActive = (id) => { S.activeCard = id; S.padCard = id; renderHome(); };
+window.logout = async () => { if (confirm('ออกจากระบบ?')) await sb.auth.signOut(); };
+
+/* ---------- LIST ---------- */
+function filteredRows() {
+  const q = S.query.trim().toLowerCase();
+  let rows = txs.filter(t => {
+    const f = S.filter;
+    if (f === 'unpaid' && t.paid) return false;
+    if (f === 'paid' && !t.paid) return false;
+    if (f !== 'all' && f !== 'unpaid' && f !== 'paid' && t.card_id !== f) return false;
+    if (!q) return true;
+    return (t.name + ' ' + (t.place || '') + ' ' + catLabel(t.category)).toLowerCase().indexOf(q) >= 0;
+  });
+  if (S.sortAsc) rows = rows.slice().reverse();
+  return rows;
+}
+function renderList() {
+  app.innerHTML = `
+  <div style="padding:24px 22px 130px;" class="u-fadein">
+    <div class="screen-title">รายการทั้งหมด</div>
+    <div style="margin-top:14px; display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:15px; background:var(--sunken); border:1px solid ${S.query ? 'rgba(150,116,45,.4)' : 'var(--hair)'}; transition:.3s;">
+      <span style="font-size:17px; color:var(--t2);">⌕</span>
+      <input id="qInput" value="${esc(S.query)}" placeholder="ค้นหาร้านค้า หรือหมวดหมู่" style="flex:1; background:transparent; border:0; outline:0; color:var(--t1b); font-size:17px;">
+    </div>
+    <div style="margin:14px -22px 0; padding:0 22px; display:flex; gap:8px; overflow-x:auto;" id="filterRow"></div>
+    <div id="listResults"></div>
+  </div>`;
+  $('qInput').oninput = (e) => { S.query = e.target.value; updateListResults(); };
+  updateListResults();
+}
+function updateListResults() {
+  const rows = filteredRows();
+  const filters = [{ k:'all', label:'ทั้งหมด' }, { k:'unpaid', label:'ค้างจ่าย' }, { k:'paid', label:'จ่ายแล้ว' }]
+    .concat(cards.map(c => ({ k:c.id, label: c.bank || c.name })));
+  $('filterRow').innerHTML = filters.map(f =>
+    `<button class="chip ${S.filter === f.k ? 'sel' : ''}" onclick="setFilter('${f.k}')">${esc(f.label)}</button>`).join('')
+    + `<button class="chip" onclick="toggleSortList()">⇅ ${S.sortAsc ? 'เก่า → ใหม่' : 'ใหม่ → เก่า'}</button>`
+    + `<button class="chip" onclick="exportCSV()">⬇ CSV</button>`;
+  $('listResults').innerHTML = `
+    <div style="margin-top:18px; display:flex; align-items:center; justify-content:space-between; padding-bottom:10px; border-bottom:1px solid var(--hair);">
+      <span style="white-space:nowrap; font-size:14.5px; color:var(--t2);">${rows.length} รายการ</span>
+      <span class="tnum" style="font-size:18px; font-weight:500; color:var(--gold);">฿${money(rows.reduce((a,t) => a + Number(t.amount), 0), true)}</span>
+    </div>
+    <div style="display:flex; flex-direction:column;">${rows.map((t, i) => txRowHtml(t, i, true)).join('')}</div>
+    ${rows.length === 0 ? `<div style="padding:52px 20px; text-align:center;" class="u-fadein">
+      <div style="font-size:28px; opacity:.35;">⌕</div>
+      <div style="margin-top:10px; font-size:16px; color:var(--t2);">ไม่พบรายการที่ตรงกับการค้นหา</div></div>` : ''}`;
+}
+window.setFilter = (k) => { S.filter = k; updateListResults(); };
+window.toggleSortList = () => { S.sortAsc = !S.sortAsc; updateListResults(); };
+window.exportCSV = () => {
+  const rows = [['บัตร','วันที่','รายการ','หมวดหมู่','ราคา','สถานที่','สถานะ']]
+    .concat(txs.map(t => [(cardById(t.card_id) || {}).name || '', t.tx_date, t.name, catLabel(t.category), t.amount, t.place || '', t.paid ? 'จ่ายแล้ว' : 'ค้างจ่าย']));
+  const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  a.download = `credit-card-${ymd(new Date())}.csv`; a.click(); URL.revokeObjectURL(a.href);
+};
+
+/* ---------- ADD ---------- */
+function renderAdd() {
+  const modes = [
+    { k:'pad', icon:'⌨', label:'กดเอง' }, { k:'scan', icon:'⛶', label:'สแกนสลิป' },
+    { k:'sms', icon:'✉', label:'วาง SMS' }, { k:'quick', icon:'⚡', label:'ลัดหมวด' }
+  ];
+  app.innerHTML = `
+  <div style="padding:22px 22px 130px;" class="u-fadein">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div class="screen-title">เพิ่มรายการ</div>
+      <div onclick="go('home')" style="width:32px; height:32px; border-radius:50%; background:var(--sunken); border:1px solid var(--hair); display:flex; align-items:center; justify-content:center; color:var(--t2); font-size:18px; cursor:pointer;">✕</div>
+    </div>
+    <div class="raised" style="margin-top:16px; display:flex; gap:6px; padding:4px; border-radius:16px; border-color:var(--hairsoft);">
+      ${modes.map(m => { const on = S.addMode === m.k; return `
+      <div onclick="setAddMode('${m.k}')" style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 2px; border-radius:12px; cursor:pointer; transition:.35s cubic-bezier(.2,.8,.2,1); background:${on ? 'var(--gold-tint-strong)' : 'transparent'}; border:1px solid ${on ? 'var(--gold-bd)' : 'transparent'};">
+        <span style="font-size:18px; line-height:1; color:${on ? 'var(--gold-deep)' : 'var(--t3)'};">${m.icon}</span>
+        <span style="font-size:12.5px; white-space:nowrap; color:${on ? 'var(--gold-deep)' : 'var(--t3)'};">${m.label}</span>
+      </div>`; }).join('')}
+    </div>
+    <div id="addPanel"></div>
+  </div>`;
+  renderAddPanel();
+}
+window.setAddMode = (k) => { S.addMode = k; renderAdd(); };
+
+function chipRow(list, sel, onclickName) {
+  return list.map(c => `<button class="chip ${sel === c.k ? 'sel' : ''}" onclick="${onclickName}('${c.k}')"><span style="font-size:17px;">${c.icon || ''}</span>${esc(c.label)}</button>`).join('');
+}
+function renderAddPanel() {
+  const host = $('addPanel');
+  if (S.addMode === 'pad') {
+    const dateChips = [{ o:0, label:'วันนี้' }, { o:1, label:'เมื่อวาน' }, { o:2, label: thShortY(dateFromOffset(2)) }];
+    host.innerHTML = `
+    <div style="animation:fadeUp .4s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="margin-top:26px; text-align:center;">
+        <div class="eyebrow" style="font-weight:400;">จำนวนเงิน</div>
+        <div style="margin-top:8px; display:flex; align-items:baseline; justify-content:center; gap:7px;">
+          <span style="font-family:'Instrument Serif',serif; font-size:30px; color:var(--gold);">฿</span>
+          <span id="padVal" class="tnum" style="font-size:54px; font-weight:400; letter-spacing:-0.5px; line-height:1.06;">${S.pad === '' ? '0' : S.pad}</span>
+        </div>
+        <div style="margin-top:6px; height:1px; width:170px; margin-left:auto; margin-right:auto; background:linear-gradient(90deg,rgba(150,116,45,0),rgba(150,116,45,.6),rgba(150,116,45,0)); animation:glowPulse 2.4s ease-in-out infinite;"></div>
+      </div>
+      <div style="margin:20px -22px 0; padding:0 22px; display:flex; gap:8px; overflow-x:auto;" id="catChips">
+        ${chipRow(CATS.map(c => ({ ...c, icon: ICON[c.k] })), S.padCat, 'pickPadCat')}
+      </div>
+      <div style="margin-top:14px; display:flex; gap:8px; overflow-x:auto;" id="cardChips">
+        ${cards.map(c => `<button class="chip ${S.padCard === c.id ? 'sel' : ''}" style="padding:7px 12px 7px 8px; font-size:14.5px;" onclick="pickPadCard('${c.id}')"><span style="width:22px; height:15px; border-radius:3px; display:block; background:${skinOf(c)};"></span>${esc(c.bank || c.name)} ·${esc(c.last4 || '····')}</button>`).join('')
+        || `<button class="chip sel" onclick="openCardSheet()">＋ เพิ่มบัตรก่อน</button>`}
+      </div>
+      <div style="margin-top:16px; display:flex; flex-direction:column; gap:9px;">
+        <div class="fieldrow"><label>ชื่อรายการ</label><input id="fName" value="${esc(S.txName)}" placeholder="เช่น Sarnies Coffee"></div>
+        <div class="fieldrow"><label>สถานที่</label><input id="fPlace" value="${esc(S.txPlace)}" placeholder="เช่น ทองหล่อ"></div>
+        <div class="fieldrow" style="cursor:pointer;" onclick="openCal('add')">
+          <label>วันที่</label>
+          <div style="flex:1; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <span style="font-size:17.5px; font-weight:700; color:var(--t1b);">${S.dayOffset === 0 ? 'วันนี้ · ' + thShortY(dateFromOffset(0)) : thShortY(dateFromOffset(S.dayOffset))}</span>
+            <span style="display:flex; align-items:center; gap:6px; font-size:14.5px; font-weight:600; color:var(--gold);">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1.6" y="3" width="12.8" height="11.4" rx="2.6" stroke="currentColor" stroke-width="1.4"></rect><path d="M1.6 6.6h12.8M5.2 1.6v2.6M10.8 1.6v2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+              เลือก
+            </span>
+          </div>
+        </div>
+        <div style="display:flex; gap:7px;">
+          ${dateChips.map(d => `<button class="chip ${S.dayOffset === d.o ? 'sel' : ''}" style="flex:1; justify-content:center; border-radius:11px; font-weight:600; font-size:14.5px;" onclick="pickDay(${d.o})">${d.label}</button>`).join('')}
+        </div>
+      </div>
+      <div style="margin-top:18px; display:grid; grid-template-columns:repeat(3,1fr); gap:9px;">
+        ${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k => `<div class="key" onclick="padPress('${k}')">${k}</div>`).join('')}
+      </div>
+      <button class="cta" style="margin-top:18px;" onclick="savePad()">บันทึกรายการ</button>
+    </div>`;
+    $('fName').oninput = (e) => { S.txName = e.target.value; };
+    $('fPlace').oninput = (e) => { S.txPlace = e.target.value; };
+  }
+  else if (S.addMode === 'scan') {
+    host.innerHTML = `
+    <div style="margin-top:22px; animation:fadeUp .4s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="position:relative; height:290px; border-radius:22px; overflow:hidden; background:linear-gradient(160deg,#EFEBE1,#E2DDD1); border:1px solid var(--hair); cursor:pointer;" onclick="document.getElementById('scanFile').click()">
+        ${S.scanImg
+          ? `<img src="${S.scanImg}" style="position:absolute; inset:26px; width:calc(100% - 52px); height:calc(100% - 52px); object-fit:contain; border-radius:10px;">`
+          : `<div style="position:absolute; inset:26px; border-radius:10px; background:linear-gradient(170deg,#EDE9E0,#D8D3C7); box-shadow:0 20px 40px -20px rgba(60,50,25,.26); padding:18px 16px; display:flex; flex-direction:column; gap:8px;">
+              <div style="height:9px; width:44%; border-radius:3px; background:rgba(20,20,24,.5);"></div>
+              <div style="height:6px; width:70%; border-radius:3px; background:rgba(20,20,24,.22);"></div>
+              <div style="height:6px; width:52%; border-radius:3px; background:rgba(20,20,24,.22);"></div>
+              <div style="margin-top:auto; text-align:center; font-size:15px; color:rgba(20,20,24,.55);">แตะเพื่อถ่ายรูป / เลือกรูปสลิป</div>
+              <div style="height:16px; width:58%; border-radius:3px; background:rgba(20,20,24,.68);"></div>
+            </div>`}
+        <div class="scanline"></div>
+        <div style="position:absolute; left:14px; top:14px; width:26px; height:26px; border-left:2px solid #8A6A28; border-top:2px solid #8A6A28; border-radius:6px 0 0 0;"></div>
+        <div style="position:absolute; right:14px; top:14px; width:26px; height:26px; border-right:2px solid #8A6A28; border-top:2px solid #8A6A28; border-radius:0 6px 0 0;"></div>
+        <div style="position:absolute; left:14px; bottom:14px; width:26px; height:26px; border-left:2px solid #8A6A28; border-bottom:2px solid #8A6A28; border-radius:0 0 0 6px;"></div>
+        <div style="position:absolute; right:14px; bottom:14px; width:26px; height:26px; border-right:2px solid #8A6A28; border-bottom:2px solid #8A6A28; border-radius:0 0 6px 0;"></div>
+      </div>
+      <input type="file" id="scanFile" accept="image/*" capture="environment" style="display:none;">
+      <div style="margin-top:16px; padding:16px; border-radius:18px; background:rgba(150,116,45,.07); border:1px solid rgba(150,116,45,.2);">
+        <div style="display:flex; align-items:center; gap:8px; font-size:14.5px; color:var(--gold);"><span style="width:6px; height:6px; border-radius:50%; background:var(--gold); display:block; animation:glowPulse 1.2s infinite;"></span>${S.scanImg ? 'แนบสลิปแล้ว — กรอกยอดเพื่อบันทึก' : 'ยังไม่มีสลิป — กรอกข้อมูลเองด้านล่างได้เลย'}</div>
+        <div style="margin-top:12px; display:flex; flex-direction:column; gap:9px;">
+          <div class="fieldrow" style="background:transparent;"><label>ร้านค้า</label><input id="scName" placeholder="เช่น Central Chidlom"></div>
+          <div class="fieldrow" style="background:transparent;"><label>จำนวนเงิน</label><input id="scAmount" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="0.00"></div>
+          <div class="fieldrow" style="background:transparent;"><label>บัตร</label><select id="scCard">${cards.map(c => `<option value="${c.id}" ${c.id === S.padCard ? 'selected' : ''}>${esc(c.bank || c.name)} ···· ${esc(c.last4 || '')}</option>`).join('')}</select></div>
+        </div>
+      </div>
+      <button class="cta" style="margin-top:18px;" onclick="saveScan()">ยืนยันและบันทึก</button>
+    </div>`;
+    $('scanFile').onchange = (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = () => { S.scanImg = r.result; renderAddPanel(); };
+      r.readAsDataURL(f);
+    };
+  }
+  else if (S.addMode === 'sms') {
+    host.innerHTML = `
+    <div style="margin-top:22px; animation:fadeUp .4s cubic-bezier(.2,.8,.2,1) both;">
+      <div class="raised" style="padding:16px; border-radius:18px;">
+        <div class="eyebrow" style="font-weight:400; letter-spacing:1.6px;">ข้อความจากธนาคาร</div>
+        <textarea id="smsText" rows="4" placeholder="วางข้อความ SMS ที่นี่ เช่น: KTC: ใช้จ่ายผ่านบัตรเครดิตหมายเลข xxxx-8842 จำนวน 1,890.00 บาท ที่ CENTRAL CHIDLOM วันที่ 09/08/69 เวลา 18:24" style="margin-top:10px; width:100%; font-size:16px; line-height:1.8; color:var(--t1b); background:transparent; border:0; outline:0; resize:vertical;"></textarea>
+      </div>
+      <div id="smsParsed"></div>
+      <button class="cta" style="margin-top:22px;" onclick="saveSms()">บันทึกจากข้อความ</button>
+    </div>`;
+    $('smsText').oninput = () => parseSms();
+  }
+  else if (S.addMode === 'quick') {
+    const tiles = quickTiles();
+    host.innerHTML = `
+    <div style="margin-top:22px; animation:fadeUp .4s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="font-size:15px; color:var(--t2);">แตะครั้งเดียวบันทึกทันที — ยอดที่คุณใช้บ่อย</div>
+      <div style="margin-top:14px; display:grid; grid-template-columns:repeat(2,1fr); gap:10px;">
+        ${tiles.map((q, i) => `
+        <div class="raised" onclick='saveQuick(${JSON.stringify(JSON.stringify(q))})' style="padding:16px 15px; border-radius:20px; cursor:pointer; transition:.3s cubic-bezier(.2,.8,.2,1); animation:popIn .5s cubic-bezier(.2,.8,.2,1) both; animation-delay:${(i*0.06).toFixed(2)}s;">
+          <div style="font-size:24px;">${q.icon}</div>
+          <div style="margin-top:9px; font-size:16px; color:var(--t1b);">${esc(q.label)}</div>
+          <div class="tnum" style="margin-top:3px; font-size:20.5px; font-weight:500; color:var(--gold);">฿${money(q.amount)}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+}
+window.pickPadCat = (k) => { S.padCat = k; renderAddPanel(); };
+window.pickPadCard = (id) => { S.padCard = id; renderAddPanel(); };
+window.pickDay = (o) => { S.dayOffset = o; renderAddPanel(); };
+window.padPress = (k) => {
+  let v = S.pad;
+  if (k === '⌫') v = v.slice(0, -1);
+  else if (k === '.') v = v.includes('.') ? v : (v === '' ? '0.' : v + '.');
+  else if (v.includes('.') && v.split('.')[1].length >= 2) { /* max 2 ทศนิยม */ }
+  else if (v.replace('.','').length < 8) v = (v === '0' ? k : v + k);
+  S.pad = v;
+  const el = $('padVal'); if (el) el.textContent = v === '' ? '0' : v;
+};
+
+async function insertTx(payload) {
+  const { error } = await sb.from('transactions').insert(payload);
+  if (error) { alert('บันทึกไม่สำเร็จ: ' + error.message); return false; }
+  return true;
+}
+window.savePad = async () => {
+  const amount = parseFloat(S.pad);
+  if (!amount || amount <= 0) return alert('กรุณาใส่จำนวนเงินก่อน');
+  if (!S.padCard) return alert('กรุณาเพิ่มบัตรก่อน (แท็บ "บัตร")');
+  const name = S.txName.trim() || catLabel(S.padCat);
+  const ok = await insertTx({ name, place: S.txPlace.trim() || null, amount, category: S.padCat, card_id: S.padCard, tx_date: ymd(dateFromOffset(S.dayOffset)), paid: false });
+  if (!ok) return;
+  fireSaved(`฿${money(amount, true)} · ${name} · ${thShortY(dateFromOffset(S.dayOffset))}`);
+};
+window.saveScan = async () => {
+  const amount = parseFloat($('scAmount').value);
+  const name = $('scName').value.trim();
+  const cardId = $('scCard') ? $('scCard').value : S.padCard;
+  if (!amount || amount <= 0) return alert('กรุณาใส่จำนวนเงิน');
+  if (!cardId) return alert('กรุณาเพิ่มบัตรก่อน');
+  const ok = await insertTx({ name: name || 'สลิป', place: null, amount, category: 'shopping', card_id: cardId, tx_date: ymd(new Date()), paid: false });
+  if (!ok) return;
+  S.scanImg = null;
+  fireSaved(`฿${money(amount, true)} · ${name || 'สลิป'} · ${thShortY(new Date())}`);
+};
+let smsData = null;
+function parseSms() {
+  const txt = $('smsText').value;
+  smsData = null;
+  const host = $('smsParsed');
+  if (!txt.trim()) { host.innerHTML = ''; return; }
+  const amt = txt.match(/([\d,]+(?:\.\d{1,2})?)\s*(?:บาท|THB|Baht|฿)/i) || txt.match(/จำนวน\s*([\d,]+(?:\.\d{1,2})?)/);
+  const last4 = txt.match(/(?:x{2,4}[- ]?|\*{2,4}[- ]?|หมายเลข\s*(?:x+|\*+)?[- ]?)(\d{4})/i);
+  const merch = txt.match(/ที่\s+([A-Za-z0-9ก-๙&.'\- ]+?)(?=\s+วันที่|\s+เมื่อ|\s+จำนวน|\s*$)/);
+  const dm = txt.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  const amount = amt ? parseFloat(amt[1].replace(/,/g, '')) : null;
+  const card = last4 ? cards.find(c => c.last4 === last4[1]) : null;
+  let dateStr = ymd(new Date());
+  if (dm) {
+    let y = parseInt(dm[3], 10); if (y > 2400) y -= 543; else if (y < 100) { y += 2500 - 543; if (y > new Date().getFullYear() + 1) y -= 100; }
+    const d = new Date(y, parseInt(dm[2],10) - 1, parseInt(dm[1],10));
+    if (!isNaN(d)) dateStr = ymd(d);
+  }
+  smsData = { amount, merchant: merch ? merch[1].trim() : '', cardId: card ? card.id : (S.padCard || (cards[0] && cards[0].id)), dateStr };
+  const chips = [
+    { k:'จำนวนเงิน', v: amount ? '฿' + money(amount, true) : 'ไม่พบ' },
+    { k:'ร้านค้า', v: smsData.merchant || 'ไม่พบ' },
+    { k:'บัตร', v: card ? `${card.bank || card.name} ···· ${card.last4}` : 'เลือกอัตโนมัติ' },
+    { k:'วันที่', v: thShortY(new Date(dateStr + 'T00:00:00')) },
+  ];
+  host.innerHTML = `
+    <div style="margin-top:10px; display:flex; align-items:center; gap:7px; font-size:14.5px; color:var(--gold);"><span style="width:6px; height:6px; border-radius:50%; background:var(--gold); display:block; animation:glowPulse 1.2s infinite;"></span>แยกข้อมูลอัตโนมัติแล้ว</div>
+    <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
+      ${chips.map((c, i) => `<div style="padding:9px 14px; border-radius:14px; background:var(--gold-tint); border:1px solid rgba(150,116,45,.26); animation:popIn .45s cubic-bezier(.2,.8,.2,1) both; animation-delay:${(i*0.08).toFixed(2)}s;">
+        <div style="font-size:12.5px; color:rgba(150,116,45,.7); letter-spacing:.6px;">${c.k}</div>
+        <div style="margin-top:2px; font-size:17px; color:var(--t1);">${esc(c.v)}</div>
+      </div>`).join('')}
+    </div>`;
+}
+window.saveSms = async () => {
+  if (!smsData || !smsData.amount) return alert('ยังอ่านจำนวนเงินจากข้อความไม่ได้ — ตรวจสอบข้อความอีกครั้ง');
+  if (!smsData.cardId) return alert('กรุณาเพิ่มบัตรก่อน');
+  const name = smsData.merchant || 'รายการจาก SMS';
+  const ok = await insertTx({ name, place: null, amount: smsData.amount, category: 'shopping', card_id: smsData.cardId, tx_date: smsData.dateStr, paid: false });
+  if (!ok) return;
+  fireSaved(`฿${money(smsData.amount, true)} · ${name}`);
+};
+function quickTiles() {
+  const groups = {};
+  txs.forEach(t => {
+    const key = t.name + '|' + t.category;
+    (groups[key] = groups[key] || []).push(t);
+  });
+  const top = Object.entries(groups).sort((a,b) => b[1].length - a[1].length).slice(0, 6)
+    .map(([key, list]) => {
+      const [name, cat] = key.split('|');
+      const amounts = list.map(x => Number(x.amount)).sort((a,b) => a - b);
+      return { icon: catIcon(cat), label: name, amount: amounts[Math.floor(amounts.length/2)], cat, cardId: list[0].card_id };
+    });
+  if (top.length >= 2) return top;
+  return [
+    { icon:'☕️', label:'กาแฟเช้า', amount:180, cat:'food' }, { icon:'⛽', label:'เติมน้ำมัน', amount:1200, cat:'fuel' },
+    { icon:'🍽', label:'มื้อกลางวัน', amount:350, cat:'food' }, { icon:'🚕', label:'แท็กซี่', amount:220, cat:'other' },
+    { icon:'🛒', label:'ซูเปอร์', amount:1500, cat:'shopping' }, { icon:'📦', label:'อื่นๆ', amount:500, cat:'other' }
+  ];
+}
+window.saveQuick = async (json) => {
+  const q = JSON.parse(json);
+  const cardId = q.cardId || S.padCard || (cards[0] && cards[0].id);
+  if (!cardId) return alert('กรุณาเพิ่มบัตรก่อน (แท็บ "บัตร")');
+  const ok = await insertTx({ name: q.label, place: null, amount: q.amount, category: q.cat, card_id: cardId, tx_date: ymd(new Date()), paid: false });
+  if (!ok) return;
+  fireSaved(`฿${money(q.amount, true)} · ${q.label} · ${thShortY(new Date())}`);
+};
+
+let savedTimer = 0;
+async function fireSaved(note) {
+  await loadData();
+  $('overlayHost').innerHTML = `
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(251,249,244,.88); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; animation:fadeIn .3s ease both;">
+    <div style="position:relative; width:112px; height:112px; display:flex; align-items:center; justify-content:center;">
+      <div style="position:absolute; inset:0; border-radius:50%; border:1px solid rgba(150,116,45,.28); border-top-color:#8A6A28; animation:ringSpin 1.6s linear infinite;"></div>
+      <div style="position:absolute; inset:14px; border-radius:50%; background:radial-gradient(circle, rgba(150,116,45,.22), rgba(150,116,45,0) 70%); animation:glowPulse 1.6s ease-in-out infinite;"></div>
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+        <path d="M14 29.5 L24 39 L43 18" stroke="#8A6A28" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="60" stroke-dashoffset="60" style="animation:checkDraw .55s .12s cubic-bezier(.6,0,.3,1) forwards;"></path>
+      </svg>
+    </div>
+    <div style="text-align:center; animation:fadeUp .5s .2s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="font-size:21.5px; color:#17140E; font-weight:600;">บันทึกแล้ว</div>
+      <div style="margin-top:6px; font-size:15.5px; color:rgba(23,20,14,.66);">${esc(note)}</div>
+    </div>
+  </div>`;
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => {
+    $('overlayHost').innerHTML = '';
+    S.pad = ''; S.txName = ''; S.txPlace = ''; S.dayOffset = 0; S.scanImg = null;
+    go('home');
+  }, 1750);
+}
+
+/* ---------- STATS ---------- */
+function renderStats() {
+  const totals = {};
+  txs.forEach(t => { totals[t.category] = (totals[t.category] || 0) + Number(t.amount); });
+  const catTotal = Object.values(totals).reduce((a,b) => a + b, 0);
+  const C = 2 * Math.PI * 55;
+  let acc = 0;
+  const donut = Object.keys(totals).sort((a,b) => totals[b] - totals[a]).map((k, i) => {
+    const frac = totals[k] / catTotal, len = Math.max(2, C * frac - 3);
+    const d = { label: catLabel(k), color: CATCOLOR[k] || '#6A6A76', pct: Math.round(frac * 100),
+      dash: len + ' ' + (C - len), offset: -acc, delay: (i * 0.09).toFixed(2) };
+    acc += C * frac; return d;
+  });
+
+  const months = [];
+  const t = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const m = new Date(t.getFullYear(), t.getMonth() - i, 1);
+    months.push({ m: THM[m.getMonth()], v: monthTotal(-i) / 1000 });
+  }
+  const maxV = Math.max(0.001, ...months.map(x => x.v));
+  const avg = months.reduce((a,x) => a + x.v, 0) / months.length;
+  const bars = months.map((x, i) => {
+    const cur = i === months.length - 1;
+    return { month: x.m, value: x.v >= 100 ? Math.round(x.v) + 'K' : x.v.toFixed(1) + 'K',
+      h: Math.max(4, Math.round(x.v / maxV * 112)), delay: (i * 0.07).toFixed(2),
+      labelColor: cur ? 'var(--gold)' : 'var(--t3)',
+      fill: cur ? 'linear-gradient(180deg,#E7D3A4,#A9884A)' : 'linear-gradient(180deg,var(--hair),var(--hairsoft))',
+      glow: cur ? '0 10px 26px -10px rgba(150,116,45,.8)' : 'none' };
+  });
+
+  // insight: หมวดที่โตสุดเทียบเดือนก่อน
+  let insight = 'บันทึกรายการอย่างต่อเนื่อง ระบบจะสรุปข้อสังเกตการใช้จ่ายให้อัตโนมัติ';
+  const tm = new Date(); const thisS = ymd(new Date(tm.getFullYear(), tm.getMonth(), 1));
+  const lastS = ymd(new Date(tm.getFullYear(), tm.getMonth() - 1, 1)), lastE = ymd(new Date(tm.getFullYear(), tm.getMonth(), 0));
+  const catNow = {}, catPrev = {};
+  txs.forEach(x => {
+    if (x.tx_date >= thisS) catNow[x.category] = (catNow[x.category] || 0) + Number(x.amount);
+    else if (x.tx_date >= lastS && x.tx_date <= lastE) catPrev[x.category] = (catPrev[x.category] || 0) + Number(x.amount);
+  });
+  let bestK = null, bestG = 0;
+  Object.keys(catNow).forEach(k => {
+    if (catPrev[k] > 0) { const g = (catNow[k] - catPrev[k]) / catPrev[k] * 100; if (g > bestG) { bestG = g; bestK = k; } }
+  });
+  if (bestK && bestG >= 5) insight = `หมวด${catLabel(bestK)}โตขึ้น ${Math.round(bestG)}% จากเดือนก่อน (฿${money(catNow[bestK])}) — ลองตั้งงบประมาณรายเดือนของหมวดนี้ เพื่อคุมยอดรวมปลายเดือน`;
+  else if (Object.keys(catNow).length) {
+    const topK = Object.keys(catNow).sort((a,b) => catNow[b] - catNow[a])[0];
+    insight = `เดือนนี้ใช้จ่ายหมวด${catLabel(topK)}มากที่สุด ฿${money(catNow[topK])} — คิดเป็น ${Math.round(catNow[topK] / Math.max(1, monthTotal(0)) * 100)}% ของทั้งเดือน`;
+  }
+
+  app.innerHTML = `
+  <div style="padding:24px 22px 130px;" class="u-fadein">
+    <div class="screen-title">วิเคราะห์การใช้จ่าย</div>
+
+    <div style="margin-top:20px; position:relative; padding:22px 18px; border-radius:24px; background:linear-gradient(160deg, var(--raised), var(--hairsoft)); border:1px solid var(--hair); overflow:hidden;">
+      <div class="aura" style="width:280px; height:280px; right:-90px; top:-110px; background:radial-gradient(circle, rgba(150,116,45,.14), rgba(150,116,45,0) 68%);"></div>
+      ${catTotal > 0 ? `
+      <div style="position:relative; display:flex; align-items:center; gap:20px;">
+        <div style="position:relative; width:132px; height:132px; flex:0 0 132px;">
+          <svg width="132" height="132" viewBox="0 0 132 132" style="transform:rotate(-90deg);">
+            <circle cx="66" cy="66" r="55" fill="none" stroke="var(--hairsoft)" stroke-width="14"></circle>
+            ${donut.map(d => `<circle cx="66" cy="66" r="55" fill="none" stroke="${d.color}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${d.dash}" stroke-dashoffset="${d.offset}" style="animation:fadeIn .7s both; animation-delay:${d.delay}s;"></circle>`).join('')}
+          </svg>
+          <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="font-size:12.5px; letter-spacing:1.4px; color:var(--t2); text-transform:uppercase;">รวม</div>
+            <div class="tnum" style="font-size:17.5px; font-weight:600; color:var(--t1);">฿${money(catTotal)}</div>
+          </div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:9px;">
+          ${donut.map(d => `
+          <div style="display:flex; align-items:center; gap:9px; animation:fadeUp .5s cubic-bezier(.2,.8,.2,1) both; animation-delay:${d.delay}s;">
+            <span style="width:8px; height:8px; border-radius:50%; display:block; background:${d.color};"></span>
+            <span style="flex:1; font-size:15.5px; color:var(--t1b); opacity:.85;">${d.label}</span>
+            <span class="tnum" style="font-size:15px; color:var(--t2);">${d.pct}%</span>
+          </div>`).join('')}
+        </div>
+      </div>` : `<div style="position:relative; padding:26px 0; text-align:center; color:var(--t2); font-size:15.5px;">ยังไม่มีข้อมูล — เริ่มจดรายการก่อน</div>`}
+    </div>
+
+    <div style="margin-top:22px; display:flex; align-items:center; justify-content:space-between;">
+      <span class="eyebrow">6 เดือนย้อนหลัง</span>
+      <span class="tnum" style="white-space:nowrap; font-size:14.5px; color:var(--t2);">เฉลี่ย ฿${avg.toFixed(1)}K</span>
+    </div>
+    <div style="margin-top:16px; display:flex; align-items:flex-end; gap:11px; height:150px;">
+      ${bars.map(b => `
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end;">
+        <span class="tnum" style="font-size:12.5px; color:${b.labelColor};">${b.value}</span>
+        <div style="width:100%; height:${b.h}px; border-radius:9px 9px 4px 4px; background:${b.fill}; transform-origin:bottom; animation:barGrow .7s cubic-bezier(.2,.8,.2,1) both; animation-delay:${b.delay}s; box-shadow:${b.glow};"></div>
+        <span style="font-size:12.5px; color:var(--t2);">${b.month}</span>
+      </div>`).join('')}
+    </div>
+
+    <div style="margin-top:26px; padding:16px 17px; border-radius:20px; background:rgba(150,116,45,.07); border:1px solid rgba(150,116,45,.18); animation:fadeUp .5s .3s both;">
+      <div style="font-size:13px; letter-spacing:1.8px; text-transform:uppercase; color:var(--gold);">ข้อสังเกต</div>
+      <div style="margin-top:8px; font-size:16px; line-height:1.85; color:var(--t1b); opacity:.85; text-wrap:pretty;">${esc(insight)}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- CARDS ---------- */
+function renderCards() {
+  app.innerHTML = `
+  <div style="padding:24px 22px 130px;" class="u-fadein">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div class="screen-title">บัตรของฉัน</div>
+      <div onclick="openCardSheet()" style="display:flex; align-items:center; gap:6px; padding:7px 13px; border-radius:99px; background:var(--gold-tint); border:1px solid rgba(150,116,45,.3); color:var(--gold); white-space:nowrap; font-size:15px; cursor:pointer; transition:.25s;">＋ เพิ่มบัตร</div>
+    </div>
+    <div style="margin-top:20px; display:flex; flex-direction:column; gap:14px;">
+      ${cards.length ? cards.map((c, i) => {
+        const used = unpaidOf(c.id), lim = Number(c.credit_limit || 0);
+        const pct = lim > 0 ? Math.min(100, Math.round(used / lim * 100)) : 0;
+        const hot = pct >= 55;
+        const cyc = cycleOf(c);
+        return `
+      <div style="border-radius:22px; overflow:hidden; background:var(--raised); border:1px solid var(--hair); animation:fadeUp .5s cubic-bezier(.2,.8,.2,1) both; animation-delay:${(i*0.07).toFixed(2)}s;">
+        <div style="position:relative; height:134px; overflow:hidden;">
+          <div style="position:absolute; inset:0; background:${skinOf(c)};"></div>
+          <div class="shimmer-el" style="animation-duration:7s; animation-delay:${(i*0.07).toFixed(2)}s;"></div>
+          <div style="position:relative; box-sizing:border-box; height:100%; padding:16px 18px; display:flex; flex-direction:column; justify-content:space-between; color:#fff;">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px;">
+              <div style="min-width:0;">
+                <div style="font-size:12.5px; letter-spacing:2px; text-transform:uppercase; opacity:.7; white-space:nowrap;">${esc(c.bank || 'CARD')}</div>
+                <div class="ellip" style="margin-top:3px; font-size:16.5px; font-weight:600; letter-spacing:.1px;">${esc(c.name)}</div>
+              </div>
+              <div style="text-align:right; flex:0 0 auto;">
+                <div style="font-size:12.5px; letter-spacing:1.2px; opacity:.6; text-transform:uppercase; white-space:nowrap;">Limit</div>
+                <div class="tnum" style="margin-top:2px; font-size:17px; font-weight:600; white-space:nowrap;">฿${money(lim)}</div>
+              </div>
+            </div>
+            <div class="tnum" style="font-size:15px; letter-spacing:2.4px; opacity:.8; white-space:nowrap;">•••• ${esc(c.last4 || '····')}</div>
+          </div>
+        </div>
+        <div style="padding:16px 17px;">
+          <div style="display:flex; align-items:flex-end; gap:14px;">
+            <div style="flex:1 1 auto; min-width:0;">
+              <div style="font-size:13px; letter-spacing:1.1px; text-transform:uppercase; font-weight:600; color:var(--t2); white-space:nowrap;">ยอดค้างชำระ</div>
+              <div style="margin-top:2px; display:flex; align-items:baseline; gap:3px;">
+                <span style="font-size:16px; color:var(--t2);">฿</span>
+                <span class="tnum" style="font-size:27px; font-weight:600; letter-spacing:-.6px; line-height:1.05; color:var(--t1);">${money(used)}</span>
+              </div>
+            </div>
+            <div style="flex:0 0 auto; text-align:right; padding-left:14px; border-left:1px solid var(--hair);">
+              <div style="font-size:13px; letter-spacing:1.1px; text-transform:uppercase; font-weight:600; color:var(--t2); white-space:nowrap;">วงเงินคงเหลือ</div>
+              <div class="tnum" style="margin-top:2px; font-size:19px; font-weight:600; color:var(--success-a); white-space:nowrap;">฿${money(Math.max(0, lim - used))}</div>
+            </div>
+          </div>
+          <div style="margin-top:13px; height:9px; border-radius:99px; background:var(--hair); overflow:hidden;">
+            <div style="height:100%; width:${pct}%; border-radius:99px; background:${hot ? 'linear-gradient(90deg,#C8A96A,#A9640F)' : 'linear-gradient(90deg,#C8A96A,#2E7D55)'}; transition:width 1s cubic-bezier(.2,.8,.2,1);"></div>
+          </div>
+          <div style="margin-top:8px; font-size:14.5px; font-weight:600; white-space:nowrap; color:${hot ? 'var(--warn)' : 'var(--success-a)'};">ใช้ไป ${pct}% ของวงเงิน</div>
+          <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--hair); display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:5px; font-size:14.5px; white-space:nowrap;">
+              <span style="color:var(--t2);">รอบบิล <span style="color:var(--t1); font-weight:500;">${cyc.cycleRange}</span></span>
+              <span style="color:var(--t2);">ครบกำหนด <span style="color:var(--warn); font-weight:600;">${cyc.dueText}</span></span>
+            </div>
+            <div style="display:flex; gap:7px;">
+              <span class="pillbtn" onclick="openCardSheet('${c.id}')">แก้ไข</span>
+              <span class="pillbtn gold" onclick="openPaySheet('${c.id}')">จ่ายบิล</span>
+            </div>
+          </div>
+        </div>
+      </div>`; }).join('')
+      : `<div style="padding:40px 20px; text-align:center; color:var(--t2); font-size:15.5px;">ยังไม่มีบัตร — กด ＋ เพิ่มบัตร ด้านบน</div>`}
+    </div>
+  </div>`;
+}
+
+/* ---------- PLANS ---------- */
+function renderPlans() {
+  const monthly = plans.filter(p => p.terms_paid < p.total_terms).reduce((a,p) => a + Number(p.per_month), 0);
+  app.innerHTML = `
+  <div style="padding:24px 22px 130px;" class="u-fadein">
+    <div class="screen-title">ผ่อนชำระ 0%</div>
+    <div style="margin-top:6px; font-size:15.5px; color:var(--t2);">ยอดผ่อนที่ต้องจ่ายเดือนนี้ ฿${money(monthly)}</div>
+    <div style="margin-top:20px; display:flex; flex-direction:column; gap:13px;">
+      ${plans.map((p, i) => {
+        const card = cardById(p.card_id);
+        const sd = new Date(p.start_date + 'T00:00:00');
+        return `
+      <div class="raised" onclick="openPlanSheet('${p.id}')" style="padding:17px; border-radius:20px; cursor:pointer; animation:fadeUp .5s cubic-bezier(.2,.8,.2,1) both; animation-delay:${(i*0.08).toFixed(2)}s;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+            <div style="width:40px; height:40px; flex:0 0 40px; border-radius:13px; background:var(--gold-tint); border:1px solid rgba(150,116,45,.22); display:flex; align-items:center; justify-content:center; font-size:20.5px;">${p.icon}</div>
+            <div style="min-width:0;">
+              <div class="ellip" style="font-size:17.5px; color:var(--t1b);">${esc(p.name)}</div>
+              <div style="margin-top:2px; font-size:14px; color:var(--t2);">${card ? esc(card.bank || card.name) + ' ···· ' + esc(card.last4 || '') : '—'} · เริ่ม ${THM[sd.getMonth()]} ${String(sd.getFullYear() + 543).slice(-2)}</div>
+            </div>
+          </div>
+          <div style="text-align:right; flex:0 0 auto;">
+            <div class="tnum" style="font-size:18px; font-weight:500; color:var(--t1);">฿${money(p.per_month)}</div>
+            <div style="font-size:12.5px; color:var(--t2);">/ เดือน</div>
+          </div>
+        </div>
+        <div style="margin-top:14px; display:flex; align-items:center; gap:5px;">
+          ${Array.from({ length: p.total_terms }, (_, j) => `<span style="flex:1; height:5px; border-radius:99px; display:block; background:${j < p.terms_paid ? 'linear-gradient(90deg,#C8A96A,#E7D3A4)' : 'var(--hair)'}; animation:fadeIn .4s both; animation-delay:${(j*0.04).toFixed(2)}s;"></span>`).join('')}
+        </div>
+        <div style="margin-top:9px; display:flex; align-items:center; justify-content:space-between; font-size:14px;">
+          <span style="color:var(--t2);">งวด ${p.terms_paid} / ${p.total_terms}</span>
+          <span class="tnum" style="color:var(--gold);">เหลืออีก ฿${money(p.per_month * (p.total_terms - p.terms_paid))}</span>
+        </div>
+      </div>`; }).join('')}
+    </div>
+    <div onclick="openPlanSheet()" style="margin-top:20px; padding:17px; border-radius:20px; border:1px dashed rgba(150,116,45,.3); background:rgba(150,116,45,.05); display:flex; align-items:center; gap:12px; cursor:pointer; transition:.28s;">
+      <div style="width:42px; height:42px; border-radius:12px; background:var(--gold-tint-strong); display:flex; align-items:center; justify-content:center; color:var(--gold-deep); font-size:20.5px;">＋</div>
+      <div>
+        <div style="font-size:17px; color:var(--t1b);">เพิ่มรายการผ่อน 0%</div>
+        <div style="margin-top:2px; font-size:14px; color:var(--t2);">ติดตามงวดผ่อนและยอดที่เหลือ</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- SHEETS ---------- */
+function openSheet(html) { $('sheetHost').innerHTML = `<div class="sheet" onclick="event.stopPropagation()"><div class="grab"></div>${html}</div>`; $('sheetHost').classList.add('open'); }
+window.closeSheet = () => { $('sheetHost').classList.remove('open'); $('sheetHost').innerHTML = ''; };
+
+/* ปฏิทิน (ดีไซน์: bottom sheet, ห้ามเลือกอนาคต) */
+window.openCal = (target) => {
+  S.calTarget = target;
+  const d = target === 'edit' ? new Date(S.editTx.tx_date + 'T00:00:00') : dateFromOffset(S.dayOffset);
+  S.calY = d.getFullYear(); S.calM = d.getMonth();
+  renderCal();
+};
+function renderCal() {
+  const t = new Date(); t.setHours(0,0,0,0);
+  const selDate = S.calTarget === 'edit' ? new Date(S.editTx.tx_date + 'T00:00:00') : dateFromOffset(S.dayOffset);
+  const first = new Date(S.calY, S.calM, 1).getDay();
+  const days = new Date(S.calY, S.calM + 1, 0).getDate();
+  const atCurrent = S.calY > t.getFullYear() || (S.calY === t.getFullYear() && S.calM >= t.getMonth());
+  let cellsHtml = '';
+  for (let i = 0; i < first; i++) cellsHtml += `<div class="cal-cell blank"></div>`;
+  for (let d = 1; d <= days; d++) {
+    const cd = new Date(S.calY, S.calM, d);
+    const future = cd > t;
+    const today = cd.getTime() === t.getTime();
+    const selc = cd.getTime() === selDate.getTime();
+    cellsHtml += `<div class="cal-cell ${future ? 'future' : ''} ${today && !selc ? 'today' : ''} ${selc ? 'selc' : ''}" ${future ? '' : `onclick="calPick(${d})"`}>${d}</div>`;
+  }
+  openSheet(`
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div onclick="calStep(-1)" style="width:42px; height:42px; border-radius:12px; background:var(--sunken); display:flex; align-items:center; justify-content:center; font-size:19.5px; color:var(--gold); cursor:pointer; user-select:none;">‹</div>
+      <div style="white-space:nowrap; font-size:19px; font-weight:700; color:var(--t1b);">${THM_FULL[S.calM]} ${S.calY + 543}</div>
+      <div onclick="calStep(1)" style="width:42px; height:42px; border-radius:12px; background:var(--sunken); display:flex; align-items:center; justify-content:center; font-size:19.5px; color:var(--gold); cursor:pointer; user-select:none; opacity:${atCurrent ? '.3' : '1'};">›</div>
+    </div>
+    <div style="margin-top:16px; display:grid; grid-template-columns:repeat(7,1fr); gap:5px;">
+      ${['อา','จ','อ','พ','พฤ','ศ','ส'].map(w => `<div style="text-align:center; font-size:13px; font-weight:700; letter-spacing:.4px; color:var(--t2);">${w}</div>`).join('')}
+    </div>
+    <div style="margin-top:8px; display:grid; grid-template-columns:repeat(7,1fr); gap:5px;">${cellsHtml}</div>
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      <div onclick="calToday()" style="flex:1; height:48px; border-radius:16px; background:var(--sunken); border:1px solid var(--hair); display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:600; color:var(--t1b); cursor:pointer;">วันนี้</div>
+      <button class="cta" style="flex:1.4; height:48px; border-radius:16px; font-size:17.5px;" onclick="calDone()">เสร็จสิ้น</button>
+    </div>`);
+}
+window.calStep = (n) => {
+  const t = new Date();
+  if (n > 0 && (S.calY > t.getFullYear() || (S.calY === t.getFullYear() && S.calM >= t.getMonth()))) return;
+  S.calM += n;
+  if (S.calM < 0) { S.calM = 11; S.calY--; }
+  if (S.calM > 11) { S.calM = 0; S.calY++; }
+  renderCal();
+};
+window.calPick = (d) => {
+  const picked = new Date(S.calY, S.calM, d);
+  if (S.calTarget === 'edit') { S.editTx.tx_date = ymd(picked); }
+  else {
+    const t = new Date(); t.setHours(0,0,0,0);
+    S.dayOffset = Math.round((t - picked) / 86400000);
+  }
+  renderCal();
+};
+window.calToday = () => {
+  if (S.calTarget === 'edit') S.editTx.tx_date = ymd(new Date());
+  else S.dayOffset = 0;
+  const t = new Date(); S.calY = t.getFullYear(); S.calM = t.getMonth();
+  renderCal();
+};
+window.calDone = () => {
+  closeSheet();
+  if (S.calTarget === 'edit') openTxSheetRender();
+  else renderAddPanel();
+};
+
+/* แก้ไขรายการ (แตะจากแถวรายการ) — รวมยกเลิกการจ่าย (ติ๊กออก + บันทึก) */
+window.openTxSheet = (id) => {
+  const t = txs.find(x => x.id === id);
+  if (!t) return;
+  S.editTx = { ...t };
+  openTxSheetRender();
+};
+function openTxSheetRender() {
+  const t = S.editTx;
+  openSheet(`
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div style="font-size:19px; font-weight:700; color:var(--t1b);">แก้ไขรายการ</div>
+      <div onclick="closeSheet()" style="width:32px; height:32px; border-radius:50%; background:var(--sunken); border:1px solid var(--hair); display:flex; align-items:center; justify-content:center; color:var(--t2); font-size:17px; cursor:pointer;">✕</div>
+    </div>
+    <div style="margin-top:16px; display:flex; flex-direction:column; gap:9px;">
+      <div class="fieldrow"><label>ชื่อรายการ</label><input id="eName" value="${esc(t.name)}"></div>
+      <div class="fieldrow"><label>สถานที่</label><input id="ePlace" value="${esc(t.place || '')}" placeholder="—"></div>
+      <div class="fieldrow"><label>จำนวนเงิน</label><input id="eAmount" type="number" step="0.01" min="0.01" inputmode="decimal" value="${t.amount}"></div>
+      <div class="fieldrow" style="cursor:pointer;" onclick="openCal('edit')">
+        <label>วันที่</label>
+        <div style="flex:1; display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:17.5px; font-weight:700; color:var(--t1b);">${thShortY(new Date(t.tx_date + 'T00:00:00'))}</span>
+          <span style="font-size:14.5px; font-weight:600; color:var(--gold);">เลือก</span>
+        </div>
+      </div>
+      <div style="margin:4px -20px 0; padding:0 20px; display:flex; gap:8px; overflow-x:auto;">
+        ${CATS.map(c => `<button class="chip ${t.category === c.k ? 'sel' : ''}" onclick="editPickCat('${c.k}')"><span style="font-size:17px;">${ICON[c.k]}</span>${c.label}</button>`).join('')}
+      </div>
+      <div style="margin-top:4px; display:flex; gap:8px; overflow-x:auto;">
+        ${cards.map(c => `<button class="chip ${t.card_id === c.id ? 'sel' : ''}" style="padding:7px 12px 7px 8px; font-size:14.5px;" onclick="editPickCard('${c.id}')"><span style="width:22px; height:15px; border-radius:3px; display:block; background:${skinOf(c)};"></span>${esc(c.bank || c.name)}</button>`).join('')}
+      </div>
+      <label style="margin-top:6px; display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:15px; background:var(--raised); border:1px solid var(--hair); cursor:pointer;">
+        <input type="checkbox" id="ePaid" ${t.paid ? 'checked' : ''} style="width:22px; height:22px; accent-color:#2E7D55; cursor:pointer;">
+        <span style="font-size:15.5px; color:var(--t1b);">จ่ายแล้ว <span style="display:block; font-size:12.5px; color:var(--t2);">เอาเครื่องหมายถูกออกแล้วกดบันทึก เพื่อยกเลิกการจ่าย</span></span>
+      </label>
+    </div>
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <div onclick="deleteTx()" style="flex:1; height:52px; border-radius:16px; background:rgba(169,100,15,.08); border:1px solid rgba(169,100,15,.25); display:flex; align-items:center; justify-content:center; font-size:15.5px; font-weight:600; color:var(--warn); cursor:pointer;">ลบรายการ</div>
+      <button class="cta" style="flex:1.6; height:52px; font-size:17px;" onclick="saveTxEdit()">บันทึก</button>
+    </div>`);
+  $('eName').oninput = (e) => { S.editTx.name = e.target.value; };
+  $('ePlace').oninput = (e) => { S.editTx.place = e.target.value; };
+  $('eAmount').oninput = (e) => { S.editTx.amount = e.target.value; };
+}
+window.editPickCat = (k) => { S.editTx.category = k; openTxSheetRender(); };
+window.editPickCard = (id) => { S.editTx.card_id = id; openTxSheetRender(); };
+window.saveTxEdit = async () => {
+  const t = S.editTx;
+  const amount = parseFloat(t.amount);
+  if (!t.name.trim() || !amount || amount <= 0) return alert('กรุณากรอกชื่อรายการและจำนวนเงินให้ถูกต้อง');
+  const { error } = await sb.from('transactions').update({
+    name: t.name.trim(), place: (t.place || '').trim() || null, amount,
+    tx_date: t.tx_date, category: t.category, card_id: t.card_id, paid: $('ePaid').checked,
+  }).eq('id', t.id);
+  if (error) return alert('บันทึกไม่สำเร็จ: ' + error.message);
+  closeSheet(); await loadData(); render();
+};
+window.deleteTx = async () => {
+  if (!confirm('ลบรายการนี้?')) return;
+  const { error } = await sb.from('transactions').delete().eq('id', S.editTx.id);
+  if (error) return alert('ลบไม่สำเร็จ: ' + error.message);
+  closeSheet(); await loadData(); render();
+};
+
+/* จ่ายบิล: เลือกรายการ + ยืนยัน */
+window.openPaySheet = (cardId) => {
+  const list = txs.filter(t => t.card_id === cardId && !t.paid);
+  if (!list.length) return alert('บัตรใบนี้ไม่มีรายการค้างจ่าย');
+  S.paySel = new Set(list.map(t => t.id));
+  openSheet(`
+    <div style="font-size:19px; font-weight:700; color:var(--t1b);">เลือกรายการที่จะจ่าย</div>
+    <div style="margin-top:14px; max-height:44vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+      ${list.map(t => `
+      <div id="pay-${t.id}" onclick="togglePay('${t.id}')" style="display:flex; align-items:center; gap:11px; padding:11px 13px; border-radius:15px; border:1.5px solid rgba(46,125,85,.4); background:rgba(46,125,85,.07); cursor:pointer; transition:.22s;">
+        <div class="payChk" style="width:24px; height:24px; flex:0 0 24px; border-radius:8px; background:#2E7D55; color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px;">✓</div>
+        <div style="flex:1; min-width:0;">
+          <div class="ellip" style="font-size:16px; font-weight:500; color:var(--t1b);">${esc(t.name)}</div>
+          <div style="font-size:13px; color:var(--t2);">${thShort(t.tx_date)}${t.place ? ' · ' + esc(t.place) : ''}</div>
+        </div>
+        <div class="tnum" style="font-size:16px; font-weight:600; color:var(--t1);">฿${money(t.amount, true)}</div>
+      </div>`).join('')}
+    </div>
+    <div id="payTotal" style="margin-top:12px; text-align:center; font-size:14.5px; color:var(--t2); font-weight:500;"></div>
+    <div style="margin-top:12px; display:flex; gap:10px;">
+      <div onclick="closeSheet()" style="flex:1; height:52px; border-radius:16px; background:var(--sunken); border:1px solid var(--hair); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:600; color:var(--t1b); cursor:pointer;">ยกเลิก</div>
+      <button class="cta" id="payBtn" style="flex:1.6; height:52px; font-size:16.5px;" onclick="confirmPay()"></button>
+    </div>`);
   updPayUI();
 };
 function updPayUI() {
-  const total = txs.filter((t) => paySel.has(t.id)).reduce((s, t) => s + Number(t.amount), 0);
-  $("payTotal").textContent = `เลือก ${paySel.size} รายการ · รวม ฿${money(total)}`;
-  const btn = $("payConfirmBtn");
-  btn.textContent = paySel.size ? `✓ ยืนยันจ่าย ฿${money(total)}` : "ยังไม่ได้เลือกรายการ";
-  btn.disabled = paySel.size === 0;
+  const total = txs.filter(t => S.paySel.has(t.id)).reduce((a,t) => a + Number(t.amount), 0);
+  $('payTotal').textContent = `เลือก ${S.paySel.size} รายการ · รวม ฿${money(total, true)}`;
+  const btn = $('payBtn');
+  btn.textContent = S.paySel.size ? `✓ ยืนยันจ่าย ฿${money(total, true)}` : 'ยังไม่ได้เลือกรายการ';
+  btn.disabled = S.paySel.size === 0;
 }
-window.togglePaySel = (id) => {
-  if (paySel.has(id)) paySel.delete(id); else paySel.add(id);
-  const el = document.getElementById("pay-" + id);
-  el.classList.toggle("sel", paySel.has(id));
-  el.querySelector(".chk").textContent = paySel.has(id) ? "✓" : "";
+window.togglePay = (id) => {
+  const on = !S.paySel.has(id);
+  if (on) S.paySel.add(id); else S.paySel.delete(id);
+  const el = $('pay-' + id);
+  el.style.borderColor = on ? 'rgba(46,125,85,.4)' : 'var(--hair)';
+  el.style.background = on ? 'rgba(46,125,85,.07)' : 'transparent';
+  const chk = el.querySelector('.payChk');
+  chk.style.background = on ? '#2E7D55' : 'var(--sunken)';
+  chk.textContent = on ? '✓' : '';
   updPayUI();
 };
 window.confirmPay = async () => {
-  if (!paySel.size) return;
-  const btn = $("payConfirmBtn"); btn.disabled = true;
-  const { error } = await sb.from("transactions").update({ paid: true }).in("id", [...paySel]);
-  if (error) { btn.disabled = false; return alert("อัปเดตไม่สำเร็จ: " + error.message); }
-  closeModal(); await loadData(); render();
+  if (!S.paySel.size) return;
+  $('payBtn').disabled = true;
+  const { error } = await sb.from('transactions').update({ paid: true }).in('id', [...S.paySel]);
+  if (error) { $('payBtn').disabled = false; return alert('อัปเดตไม่สำเร็จ: ' + error.message); }
+  closeSheet(); await loadData(); render();
 };
 
-window.delTx = async (id) => {
-  if (!confirm("ลบรายการนี้?")) return;
-  const { error } = await sb.from("transactions").delete().eq("id", id);
-  if (error) return alert("ลบไม่สำเร็จ: " + error.message);
-  await loadData(); render();
+/* เพิ่ม/แก้ไขบัตร */
+let editCard = null, pickedSkin = 0;
+window.openCardSheet = (cardId) => {
+  editCard = cardId ? cardById(cardId) : null;
+  pickedSkin = editCard ? (editCard.skin || 0) : cards.length % SKINS.length;
+  const dayOpts = (sel) => ['<option value="">—</option>'].concat(Array.from({ length: 31 }, (_, i) => `<option value="${i+1}" ${sel === i+1 ? 'selected' : ''}>วันที่ ${i+1}</option>`)).join('');
+  openSheet(`
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div style="font-size:19px; font-weight:700; color:var(--t1b);">${editCard ? 'แก้ไขบัตร' : 'เพิ่มบัตรใหม่'}</div>
+      <div onclick="closeSheet()" style="width:32px; height:32px; border-radius:50%; background:var(--sunken); border:1px solid var(--hair); display:flex; align-items:center; justify-content:center; color:var(--t2); font-size:17px; cursor:pointer;">✕</div>
+    </div>
+    <div style="margin-top:16px; display:flex; flex-direction:column; gap:9px;">
+      <div class="fieldrow"><label>ธนาคาร</label><input id="cBank" maxlength="16" value="${editCard ? esc(editCard.bank) : ''}" placeholder="เช่น KTC, SCB"></div>
+      <div class="fieldrow"><label>ชื่อบัตร</label><input id="cName" required maxlength="40" value="${editCard ? esc(editCard.name) : ''}" placeholder="เช่น Signature Reserve"></div>
+      <div class="fieldrow"><label>เลข 4 ตัวท้าย</label><input id="cLast4" maxlength="4" inputmode="numeric" pattern="\\d*" value="${editCard ? esc(editCard.last4) : ''}" placeholder="8842"></div>
+      <div class="fieldrow"><label>วงเงิน (฿)</label><input id="cLimit" type="number" min="0" step="1000" inputmode="numeric" value="${editCard ? Number(editCard.credit_limit || 0) : 50000}"></div>
+      <div class="fieldrow"><label>วันสรุปยอด</label><select id="cStmt">${dayOpts(editCard ? editCard.statement_day : null)}</select></div>
+      <div class="fieldrow"><label>วันครบกำหนด</label><select id="cDue">${dayOpts(editCard ? editCard.due_day : null)}</select></div>
+      <div>
+        <div style="font-size:14.5px; font-weight:600; color:var(--t2); margin:6px 0 8px;">ลายบัตร</div>
+        <div style="display:flex; gap:10px;" id="skinRow">
+          ${SKINS.map((s, i) => `<div onclick="pickSkin(${i})" data-skin="${i}" style="width:56px; height:38px; border-radius:8px; background:${s}; cursor:pointer; border:2px solid ${i === pickedSkin ? 'var(--gold)' : 'transparent'}; box-shadow:var(--card-shadow);"></div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      ${editCard ? `<div onclick="deleteCard()" style="flex:1; height:52px; border-radius:16px; background:rgba(169,100,15,.08); border:1px solid rgba(169,100,15,.25); display:flex; align-items:center; justify-content:center; font-size:15.5px; font-weight:600; color:var(--warn); cursor:pointer;">ลบบัตร</div>` : ''}
+      <button class="cta" style="flex:1.6; height:52px; font-size:17px;" onclick="saveCard()">${editCard ? 'บันทึก' : 'เพิ่มบัตร'}</button>
+    </div>`);
 };
-
-window.delCard = async (id) => {
-  const card = cards.find((c) => c.id === id);
-  const cnt = txs.filter((t) => t.card_id === id).length;
-  if (!confirm(`ลบบัตร "${card.name}" และรายการทั้งหมด ${cnt} รายการ? ข้อมูลจะหายถาวร`)) return;
-  const { error } = await sb.from("cards").delete().eq("id", id);
-  if (error) return alert("ลบไม่สำเร็จ: " + error.message);
-  view = { name: "cards", cardId: null };
-  await loadData(); render();
+window.pickSkin = (i) => {
+  pickedSkin = i;
+  document.querySelectorAll('#skinRow [data-skin]').forEach(el => { el.style.borderColor = Number(el.dataset.skin) === i ? 'var(--gold)' : 'transparent'; });
 };
-
-window.exportCSV = (cardId) => {
-  const list = cardId ? txs.filter((t) => t.card_id === cardId) : txs;
-  const cardName = (id) => (cards.find((c) => c.id === id) || {}).name || "";
-  const rows = [["บัตร", "วันที่", "รายการ", "หมวดหมู่", "ราคา", "สถานที่", "สถานะ"]]
-    .concat(list.map((t) => [cardName(t.card_id), t.tx_date, t.name, catOf(t.category).label, t.amount, t.place || "", t.paid ? "จ่ายแล้ว" : "ยังไม่จ่าย"]));
-  const csv = "\uFEFF" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  a.download = `credit-card-${ymd(new Date())}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
-window.closeModal = closeModal;
-
-/* ---------- PWA: install as app ---------- */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
-}
-(function installUI() {
-  const banner = $("installBanner"), btn = $("installBtn"), hint = $("installHint");
-  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const dismissed = localStorage.getItem("installDismissed") === "1";
-  let deferredPrompt = null;
-
-  const hide = () => banner.classList.remove("show");
-  $("installClose").onclick = () => { hide(); localStorage.setItem("installDismissed", "1"); };
-
-  if (isStandalone || dismissed) return;
-
-  if (isIOS) {
-    // iOS/iPadOS: Safari ไม่มี install prompt — แนะนำวิธีเพิ่มลงหน้าจอโฮมแทน
-    btn.style.display = "none";
-    hint.innerHTML = 'กดปุ่มแชร์ <span class="ic">&#x2B06;&#xFE0F;</span> ด้านล่างของ Safari แล้วเลือก <b>"เพิ่มไปยังหน้าจอโฮม"</b>';
-    setTimeout(() => banner.classList.add("show"), 2500);
-    return;
-  }
-
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    banner.classList.add("show");
-  });
-  btn.onclick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    hide();
+window.saveCard = async () => {
+  const name = $('cName').value.trim();
+  if (!name) return alert('กรุณาตั้งชื่อบัตร');
+  const payload = {
+    name, bank: $('cBank').value.trim().toUpperCase(), last4: $('cLast4').value.trim(),
+    credit_limit: Number($('cLimit').value) || 0,
+    statement_day: $('cStmt').value ? Number($('cStmt').value) : null,
+    due_day: $('cDue').value ? Number($('cDue').value) : null,
+    skin: pickedSkin,
   };
-  window.addEventListener("appinstalled", hide);
-})();
+  const q = editCard ? sb.from('cards').update(payload).eq('id', editCard.id) : sb.from('cards').insert(payload);
+  const { error } = await q;
+  if (error) return alert('บันทึกไม่สำเร็จ: ' + error.message);
+  closeSheet(); await loadData(); render();
+};
+window.deleteCard = async () => {
+  const cnt = txs.filter(t => t.card_id === editCard.id).length;
+  if (!confirm(`ลบบัตร "${editCard.name}" และรายการทั้งหมด ${cnt} รายการ? ข้อมูลจะหายถาวร`)) return;
+  const { error } = await sb.from('cards').delete().eq('id', editCard.id);
+  if (error) return alert('ลบไม่สำเร็จ: ' + error.message);
+  closeSheet(); await loadData(); render();
+};
+
+/* เพิ่ม/แก้ไขแผนผ่อน 0% */
+let editPlan = null, pickedPlanIcon = '📦';
+window.openPlanSheet = (planId) => {
+  editPlan = planId ? plans.find(p => p.id === planId) : null;
+  pickedPlanIcon = editPlan ? editPlan.icon : '📦';
+  openSheet(`
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div style="font-size:19px; font-weight:700; color:var(--t1b);">${editPlan ? 'แก้ไขรายการผ่อน' : 'เพิ่มรายการผ่อน 0%'}</div>
+      <div onclick="closeSheet()" style="width:32px; height:32px; border-radius:50%; background:var(--sunken); border:1px solid var(--hair); display:flex; align-items:center; justify-content:center; color:var(--t2); font-size:17px; cursor:pointer;">✕</div>
+    </div>
+    <div style="margin:14px -20px 0; padding:0 20px; display:flex; gap:8px; overflow-x:auto;" id="planIconRow">
+      ${PLAN_ICONS.map(ic => `<button class="chip ${pickedPlanIcon === ic ? 'sel' : ''}" style="font-size:19px; padding:8px 12px;" onclick="pickPlanIcon('${ic}')">${ic}</button>`).join('')}
+    </div>
+    <div style="margin-top:12px; display:flex; flex-direction:column; gap:9px;">
+      <div class="fieldrow"><label>ชื่อรายการ</label><input id="pName" maxlength="60" value="${editPlan ? esc(editPlan.name) : ''}" placeholder='เช่น MacBook Pro 14"'></div>
+      <div class="fieldrow"><label>บัตร</label><select id="pCard">${cards.map(c => `<option value="${c.id}" ${editPlan && editPlan.card_id === c.id ? 'selected' : ''}>${esc(c.bank || c.name)} ···· ${esc(c.last4 || '')}</option>`).join('')}</select></div>
+      <div class="fieldrow"><label>ต่อเดือน (฿)</label><input id="pPer" type="number" min="1" step="0.01" inputmode="decimal" value="${editPlan ? Number(editPlan.per_month) : ''}" placeholder="0.00"></div>
+      <div class="fieldrow"><label>จำนวนงวด</label><input id="pTotal" type="number" min="1" max="60" inputmode="numeric" value="${editPlan ? editPlan.total_terms : 10}"></div>
+      <div class="fieldrow"><label>จ่ายแล้ว (งวด)</label><input id="pPaid" type="number" min="0" max="60" inputmode="numeric" value="${editPlan ? editPlan.terms_paid : 0}"></div>
+      <div class="fieldrow"><label>เริ่มเมื่อ</label><input id="pStart" type="month" value="${editPlan ? editPlan.start_date.slice(0,7) : ymd(new Date()).slice(0,7)}"></div>
+    </div>
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      ${editPlan ? `<div onclick="deletePlan()" style="flex:1; height:52px; border-radius:16px; background:rgba(169,100,15,.08); border:1px solid rgba(169,100,15,.25); display:flex; align-items:center; justify-content:center; font-size:15.5px; font-weight:600; color:var(--warn); cursor:pointer;">ลบ</div>` : ''}
+      ${editPlan && editPlan.terms_paid < editPlan.total_terms ? `<div onclick="payTerm()" style="flex:1.2; height:52px; border-radius:16px; background:rgba(46,125,85,.1); border:1px solid rgba(46,125,85,.3); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; color:var(--success); cursor:pointer;">✓ จ่ายงวดนี้</div>` : ''}
+      <button class="cta" style="flex:1.6; height:52px; font-size:17px;" onclick="savePlan()">${editPlan ? 'บันทึก' : 'เพิ่ม'}</button>
+    </div>`);
+};
+window.pickPlanIcon = (ic) => {
+  pickedPlanIcon = ic;
+  document.querySelectorAll('#planIconRow .chip').forEach(el => el.classList.toggle('sel', el.textContent === ic));
+};
+window.savePlan = async () => {
+  const name = $('pName').value.trim();
+  const per = parseFloat($('pPer').value);
+  const total = parseInt($('pTotal').value, 10);
+  let paid = parseInt($('pPaid').value, 10) || 0;
+  if (!name || !per || per <= 0 || !total || total < 1) return alert('กรุณากรอกชื่อ ยอดต่อเดือน และจำนวนงวดให้ครบ');
+  paid = Math.min(paid, total);
+  const payload = {
+    icon: pickedPlanIcon, name, card_id: $('pCard').value || null,
+    per_month: per, total_terms: total, terms_paid: paid,
+    start_date: ($('pStart').value || ymd(new Date()).slice(0,7)) + '-01',
+  };
+  const q = editPlan ? sb.from('plans').update(payload).eq('id', editPlan.id) : sb.from('plans').insert(payload);
+  const { error } = await q;
+  if (error) return alert('บันทึกไม่สำเร็จ: ' + error.message);
+  closeSheet(); await loadData(); render();
+};
+window.payTerm = async () => {
+  const { error } = await sb.from('plans').update({ terms_paid: Math.min(editPlan.terms_paid + 1, editPlan.total_terms) }).eq('id', editPlan.id);
+  if (error) return alert('อัปเดตไม่สำเร็จ: ' + error.message);
+  closeSheet(); await loadData(); render();
+};
+window.deletePlan = async () => {
+  if (!confirm('ลบรายการผ่อนนี้?')) return;
+  const { error } = await sb.from('plans').delete().eq('id', editPlan.id);
+  if (error) return alert('ลบไม่สำเร็จ: ' + error.message);
+  closeSheet(); await loadData(); render();
+};
+
+/* ---------- PWA ---------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
 
 /* ---------- boot ---------- */
 (async function boot() {
@@ -854,8 +1468,8 @@ if ("serviceWorker" in navigator) {
   sb.auth.onAuthStateChange(async (_ev, s) => {
     const wasIn = !!session;
     session = s;
-    if (s && !wasIn) { await loadData(); view = { name: "cards", cardId: null }; render(); }
-    if (!s && wasIn) { cards = []; txs = []; view = { name: "cards", cardId: null }; render(); }
+    if (s && !wasIn) { await loadData(); S.screen = 'home'; render(); }
+    if (!s && wasIn) { cards = []; txs = []; plans = []; S.screen = 'home'; render(); }
   });
 })();
 </script>

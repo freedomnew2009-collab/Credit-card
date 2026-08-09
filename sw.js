@@ -1,6 +1,6 @@
 // Service Worker: ทำให้ติดตั้งเป็นแอปได้ + เปิดแอปเร็วขึ้น + มี offline shell
 // กลยุทธ์: network-first (ได้เวอร์ชันใหม่เสมอเมื่อออนไลน์) fallback เป็น cache เมื่อออฟไลน์
-const CACHE = "ccapp-v1";
+const CACHE = "ccapp-v2";
 const ASSETS = [
   "./",
   "index.html",

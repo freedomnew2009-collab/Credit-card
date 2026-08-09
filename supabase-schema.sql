@@ -28,6 +28,37 @@ create table if not exists public.transactions (
 -- สำหรับฐานข้อมูลที่สร้างไว้ก่อนหน้า: เพิ่มคอลัมน์หมวดหมู่ (รันซ้ำได้)
 alter table public.transactions add column if not exists category text not null default 'other';
 
+-- ดีไซน์ใหม่: ข้อมูลบัตรเพิ่มเติม (รันซ้ำได้)
+alter table public.cards add column if not exists bank text not null default '';
+alter table public.cards add column if not exists last4 text not null default '';
+alter table public.cards add column if not exists credit_limit numeric(12,2) not null default 50000;
+alter table public.cards add column if not exists due_day int check (due_day between 1 and 31);
+alter table public.cards add column if not exists skin int not null default 0;
+
+-- ตารางผ่อนชำระ 0%
+create table if not exists public.plans (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  card_id uuid references public.cards(id) on delete cascade,
+  icon text not null default '📦',
+  name text not null,
+  per_month numeric(12,2) not null,
+  total_terms int not null check (total_terms between 1 and 60),
+  terms_paid int not null default 0,
+  start_date date not null default current_date,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_plans_user on public.plans(user_id);
+alter table public.plans enable row level security;
+drop policy if exists "plans_select_own" on public.plans;
+drop policy if exists "plans_insert_own" on public.plans;
+drop policy if exists "plans_update_own" on public.plans;
+drop policy if exists "plans_delete_own" on public.plans;
+create policy "plans_select_own" on public.plans for select using (auth.uid() = user_id);
+create policy "plans_insert_own" on public.plans for insert with check (auth.uid() = user_id);
+create policy "plans_update_own" on public.plans for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "plans_delete_own" on public.plans for delete using (auth.uid() = user_id);
+
 create index if not exists idx_cards_user on public.cards(user_id);
 create index if not exists idx_tx_user on public.transactions(user_id);
 create index if not exists idx_tx_card_date on public.transactions(card_id, tx_date);
