@@ -246,20 +246,6 @@
   .setupbox { line-height: 1.7; font-size: .9rem; }
   .setupbox code { background: var(--bg); padding: 2px 7px; border-radius: 6px; font-size: .82rem; }
 
-  /* ---------- calculator ---------- */
-  .calc { margin-top: 8px; background: var(--bg); border-radius: 14px; padding: 10px; }
-  .calc-preview { text-align: right; font-size: .85rem; color: var(--muted); min-height: 1.3em; padding: 0 6px 6px; font-weight: 500; }
-  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .calc-grid button {
-    font-family: inherit; font-size: 1.15rem; padding: 12px 0;
-    border: none; border-radius: 10px; background: #fff; color: var(--ink);
-    cursor: pointer; box-shadow: 0 1px 3px rgba(35,38,59,.08); touch-action: manipulation;
-  }
-  .calc-grid button:active { transform: scale(.94); }
-  .calc-grid .op { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-  .calc-grid .eq { background: var(--accent); color: #fff; grid-column: span 2; font-weight: 600; }
-  .calc-grid .cl { background: var(--red-soft); color: var(--red); grid-column: span 2; font-size: .95rem; }
-
   /* ---------- install banner ---------- */
   .install-banner {
     position: fixed; left: 12px; right: 12px;
@@ -306,6 +292,8 @@ let session = null;
 let cards = [];
 let txs = [];
 let view = { name: "cards", cardId: null };
+const TH_MONTHS = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+let sumYear = "all", sumMonth = "all", sumStatus = "all"; // ตัวกรองหน้าสรุป
 let expandedTx = null;
 let sortDesc = true; // true = ใหม่ไปเก่า
 let paySel = new Set();
@@ -373,6 +361,7 @@ function render() {
   if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) return renderSetup();
   if (!session) return renderAuth();
   if (view.name === "detail") return renderDetail();
+  if (view.name === "summary") return renderSummary();
   return renderCards();
 }
 
@@ -475,7 +464,10 @@ function renderCards() {
       <div class="sumbox"><div class="t">ค้างจ่ายรวมทุกบัตร</div><div class="v ${totalUnpaid > 0 ? "red" : "green"}">฿${money(totalUnpaid)}</div></div>
       <div class="sumbox"><div class="t">ใช้ไปเดือนนี้</div><div class="v">฿${money(monthTotal)}</div></div>
     </div>
-    ${cards.length ? `<div class="toolbar"><button class="btn btn-soft btn-sm" onclick="exportCSV()">⬇ ส่งออก CSV ทั้งหมด</button></div>` : ""}
+    ${cards.length ? `<div class="toolbar">
+      <button class="btn btn-soft btn-sm" onclick="openSummary()">📊 สรุป</button>
+      <button class="btn btn-soft btn-sm" onclick="exportCSV()">⬇ ส่งออก CSV ทั้งหมด</button>
+    </div>` : ""}
     ${cardsHtml}
     <button class="fab" onclick="openCardModal()" title="เพิ่มบัตร">+</button>
     ${modalHtml()}`;
@@ -550,6 +542,107 @@ function renderDetail() {
     ${modalHtml()}`;
 }
 
+/* ---------- summary ---------- */
+window.openSummary = () => { view = { name: "summary", cardId: null }; render(); };
+window.setSumYear = (v) => { sumYear = v; render(); };
+window.setSumMonth = (v) => { sumMonth = v; render(); };
+window.setSumStatus = (v) => { sumStatus = v; render(); };
+
+function renderSummary() {
+  const list = txs.filter((t) => {
+    if (sumYear !== "all" && t.tx_date.slice(0, 4) !== sumYear) return false;
+    if (sumMonth !== "all" && t.tx_date.slice(5, 7) !== sumMonth) return false;
+    if (sumStatus === "paid" && !t.paid) return false;
+    if (sumStatus === "unpaid" && t.paid) return false;
+    return true;
+  });
+  const total = list.reduce((s, t) => s + Number(t.amount), 0);
+  const paidSum = list.filter((t) => t.paid).reduce((s, t) => s + Number(t.amount), 0);
+  const unpaidSum = list.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
+
+  const years = [...new Set(txs.map((t) => t.tx_date.slice(0, 4)))].sort().reverse();
+  if (!years.length) years.push(String(new Date().getFullYear()));
+
+  // แยกตามบัตร
+  const byCard = cards.map((c) => {
+    const l = list.filter((t) => t.card_id === c.id);
+    return { c, sum: l.reduce((s, t) => s + Number(t.amount), 0), cnt: l.length };
+  }).filter((x) => x.cnt > 0).sort((a, b) => b.sum - a.sum);
+
+  // แยกตามหมวด
+  const byCat = {};
+  list.forEach((t) => { const k = t.category || "other"; byCat[k] = (byCat[k] || 0) + Number(t.amount); });
+  const catRows = Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a]);
+
+  const statusChips = [["all", "ทั้งหมด"], ["paid", "จ่ายแล้ว"], ["unpaid", "ยังไม่จ่าย"]];
+  const periodLabel = (sumMonth !== "all" ? TH_MONTHS[Number(sumMonth) - 1] + " " : "")
+    + (sumYear !== "all" ? "ปี " + (Number(sumYear) + 543) : (sumMonth !== "all" ? "ทุกปี" : "ทุกช่วงเวลา"));
+
+  app.innerHTML = `
+    <div class="backrow">
+      <button class="btn btn-ghost" onclick="backHome()">‹ กลับ</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
+    </div>
+    <h1 style="font-size:1.25rem; font-weight:600; margin:2px 2px 12px;">📊 สรุปค่าใช้จ่าย</h1>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+      <div class="field" style="margin:0;">
+        <select onchange="setSumYear(this.value)" style="font-weight:500; ${sumYear !== "all" ? "border-color:var(--accent); color:var(--accent);" : ""}">
+          <option value="all" ${sumYear === "all" ? "selected" : ""}>ทุกปี</option>
+          ${years.map((y) => `<option value="${y}" ${sumYear === y ? "selected" : ""}>ปี ${Number(y) + 543}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field" style="margin:0;">
+        <select onchange="setSumMonth(this.value)" style="font-weight:500; ${sumMonth !== "all" ? "border-color:var(--accent); color:var(--accent);" : ""}">
+          <option value="all" ${sumMonth === "all" ? "selected" : ""}>ทุกเดือน</option>
+          ${TH_MONTHS.map((m, i) => { const v = String(i + 1).padStart(2, "0"); return `<option value="${v}" ${sumMonth === v ? "selected" : ""}>${m}</option>`; }).join("")}
+        </select>
+      </div>
+    </div>
+    <div class="catpick" style="margin-bottom:14px;">
+      ${statusChips.map(([k, l]) => `<button type="button" class="cp ${sumStatus === k ? "sel" : ""}" onclick="setSumStatus('${k}')">${l}</button>`).join("")}
+    </div>
+
+    <div style="font-size:.8rem; color:var(--muted); margin:0 2px 8px;">${esc(periodLabel)} · ${list.length} รายการ</div>
+    <div class="summary" style="grid-template-columns:1fr 1fr;">
+      <div class="sumbox"><div class="t">ยอดรวม</div><div class="v">฿${money(total)}</div></div>
+      <div class="sumbox"><div class="t">จำนวนรายการ</div><div class="v">${list.length}</div></div>
+      <div class="sumbox"><div class="t">จ่ายแล้ว</div><div class="v green">฿${money(paidSum)}</div></div>
+      <div class="sumbox"><div class="t">ค้างจ่าย</div><div class="v ${unpaidSum > 0 ? "red" : "green"}">฿${money(unpaidSum)}</div></div>
+    </div>
+
+    <div class="panel" style="margin-bottom:14px;">
+      <div style="font-size:.85rem; font-weight:600; color:var(--muted); margin-bottom:10px;">แยกตามบัตร</div>
+      ${byCard.length ? byCard.map(({ c, sum, cnt }) => `
+      <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line);">
+        <span style="width:26px; height:18px; border-radius:4px; flex:0 0 auto; display:block; background:linear-gradient(135deg, ${esc(c.color)}, ${esc(c.color)}cc);"></span>
+        <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.92rem;">${esc(c.name)}<small style="color:var(--muted);"> · ${cnt} รายการ</small></span>
+        <b style="font-size:.95rem;">฿${money(sum)}</b>
+      </div>`).join("") : `<div style="color:var(--muted); font-size:.88rem; text-align:center; padding:12px 0;">ไม่มีรายการในช่วงที่เลือก</div>`}
+    </div>
+
+    <div class="panel" style="margin-bottom:14px;">
+      <div style="font-size:.85rem; font-weight:600; color:var(--muted); margin-bottom:10px;">แยกตามหมวดหมู่</div>
+      ${catRows.length ? catRows.map((k) => {
+        const c = catOf(k), v = byCat[k], pct = total > 0 ? Math.round(v / total * 100) : 0;
+        return `
+      <div style="padding:7px 0;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.05rem;">${c.icon}</span>
+          <span style="flex:1; font-size:.92rem;">${c.label}</span>
+          <span style="font-size:.8rem; color:var(--muted);">${pct}%</span>
+          <b style="font-size:.95rem; min-width:80px; text-align:right;">฿${money(v)}</b>
+        </div>
+        <div style="margin-top:5px; height:6px; border-radius:99px; background:var(--bg); overflow:hidden;">
+          <div style="height:100%; width:${pct}%; border-radius:99px; background:linear-gradient(90deg,#5b6ee8,#8b5cf6);"></div>
+        </div>
+      </div>`;
+      }).join("") : `<div style="color:var(--muted); font-size:.88rem; text-align:center; padding:12px 0;">ไม่มีรายการในช่วงที่เลือก</div>`}
+    </div>
+    ${modalHtml()}`;
+}
+
 /* ---------- modals ---------- */
 function modalHtml() {
   return `
@@ -607,20 +700,8 @@ window.openTxModal = (txId) => {
         <input type="date" id="tDate" required value="${editingTx ? editingTx.tx_date : ymd(new Date())}"></div>
       <div class="field"><label>ชื่อรายการ</label>
         <input id="tName" required maxlength="120" placeholder="เช่น ค่าอาหาร, เติมน้ำมัน" value="${editingTx ? esc(editingTx.name) : ""}"></div>
-      <div class="field"><label>ราคา (บาท) — แตะเพื่อเปิดเครื่องคิดเลข</label>
-        <input id="tAmount" readonly inputmode="none" placeholder="0.00" value="${editingTx ? editingTx.amount : ""}" onclick="openCalc()">
-        <div class="calc" id="calc" style="display:none">
-          <div class="calc-preview" id="calcPrev"></div>
-          <div class="calc-grid">
-            <button type="button" onclick="calcKey('7')">7</button><button type="button" onclick="calcKey('8')">8</button><button type="button" onclick="calcKey('9')">9</button><button type="button" class="op" onclick="calcKey('÷')">÷</button>
-            <button type="button" onclick="calcKey('4')">4</button><button type="button" onclick="calcKey('5')">5</button><button type="button" onclick="calcKey('6')">6</button><button type="button" class="op" onclick="calcKey('×')">×</button>
-            <button type="button" onclick="calcKey('1')">1</button><button type="button" onclick="calcKey('2')">2</button><button type="button" onclick="calcKey('3')">3</button><button type="button" class="op" onclick="calcKey('−')">−</button>
-            <button type="button" onclick="calcKey('0')">0</button><button type="button" onclick="calcKey('.')">.</button><button type="button" class="op" onclick="calcKey('⌫')">⌫</button><button type="button" class="op" onclick="calcKey('+')">+</button>
-            <button type="button" class="cl" onclick="calcKey('C')">ล้าง (C)</button><button type="button" class="eq" onclick="calcKey('=')">=</button>
-          </div>
-          <button type="button" class="btn btn-green btn-block" style="margin-top:10px" onclick="confirmCalcAmount()">✓ ใช้ยอดนี้</button>
-        </div>
-      </div>
+      <div class="field"><label>ราคา (บาท)</label>
+        <input type="number" id="tAmount" required step="0.01" min="0.01" inputmode="decimal" placeholder="0.00" value="${editingTx ? editingTx.amount : ""}"></div>
       <div class="field"><label>หมวดหมู่</label>
         <div class="catpick" id="catPick">
           ${CATS.map((c) => `<button type="button" class="cp ${c.k === pickedCat ? "sel" : ""}" onclick="pickCat('${c.k}')">${c.icon} ${c.label}</button>`).join("")}
@@ -648,48 +729,10 @@ window.pickCat = (k) => {
   document.querySelectorAll("#catPick .cp").forEach((b, i) => b.classList.toggle("sel", CATS[i].k === k));
 };
 
-/* ---------- calculator ---------- */
-function evalExpr(s) {
-  if (!s) return null;
-  const e = String(s).replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
-  if (!/^[\d+\-*/.]+$/.test(e)) return null;
-  try {
-    const r = Function('"use strict";return (' + e + ")")();
-    return typeof r === "number" && isFinite(r) ? Math.round(r * 100) / 100 : null;
-  } catch { return null; }
-}
-function updCalcPrev() {
-  const v = $("tAmount").value;
-  const prev = $("calcPrev");
-  if (/[+×÷−*/-]/.test(v.slice(1))) {
-    const r = evalExpr(v);
-    prev.textContent = r != null ? "= " + money(r) : "…";
-  } else prev.textContent = v || "0";
-}
-window.openCalc = () => { $("calc").style.display = "block"; updCalcPrev(); };
-window.calcKey = (k) => {
-  const inp = $("tAmount");
-  let v = inp.value;
-  if (k === "C") v = "";
-  else if (k === "⌫") v = v.slice(0, -1);
-  else if (k === "=") {
-    const r = evalExpr(v);
-    if (r != null) v = String(r);
-  } else v += k;
-  inp.value = v;
-  updCalcPrev();
-};
-window.confirmCalcAmount = () => {
-  const r = evalExpr($("tAmount").value);
-  if (r == null || r <= 0) return alert("จำนวนไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
-  $("tAmount").value = String(r);
-  $("calc").style.display = "none";
-};
-
 async function saveTx(e) {
   e.preventDefault();
-  const amount = evalExpr($("tAmount").value);
-  if (amount == null || amount <= 0) return alert("กรุณาใส่ราคาให้ถูกต้อง (กด = เพื่อคำนวณผลก่อนบันทึกได้)");
+  const amount = Number($("tAmount").value);
+  if (!amount || amount <= 0) return alert("กรุณาใส่ราคาให้ถูกต้อง");
   const payload = {
     tx_date: $("tDate").value,
     name: $("tName").value.trim(),
