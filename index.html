@@ -294,6 +294,7 @@ let txs = [];
 let view = { name: "cards", cardId: null };
 const TH_MONTHS = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 let sumYear = "all", sumMonth = "all", sumStatus = "all"; // ตัวกรองหน้าสรุป
+let detYear = "all", detMonth = "all", detStatus = "all"; // ตัวกรองหน้าบัตร
 let expandedTx = null;
 let sortDesc = true; // true = ใหม่ไปเก่า
 let paySel = new Set();
@@ -476,13 +477,27 @@ function renderCards() {
 function renderDetail() {
   const card = cards.find((c) => c.id === view.cardId);
   if (!card) { view = { name: "cards", cardId: null }; return render(); }
-  const list = txs.filter((t) => t.card_id === card.id).slice().sort((a, b) => {
+  const idx = cards.findIndex((c) => c.id === card.id);
+  const all = txs.filter((t) => t.card_id === card.id);
+  const unpaid = all.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
+  const unpaidCnt = all.filter((t) => !t.paid).length;
+
+  // รายการตามตัวกรอง ปี/เดือน/สถานะ
+  const list = all.filter((t) => {
+    if (detYear !== "all" && t.tx_date.slice(0, 4) !== detYear) return false;
+    if (detMonth !== "all" && t.tx_date.slice(5, 7) !== detMonth) return false;
+    if (detStatus === "paid" && !t.paid) return false;
+    if (detStatus === "unpaid" && t.paid) return false;
+    return true;
+  }).sort((a, b) => {
     const cmp = a.tx_date.localeCompare(b.tx_date) || String(a.created_at || "").localeCompare(String(b.created_at || ""));
     return sortDesc ? -cmp : cmp;
   });
-  const total = list.reduce((s, t) => s + Number(t.amount), 0);
-  const unpaid = list.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
-  const unpaidCnt = list.filter((t) => !t.paid).length;
+  const fTotal = list.reduce((s, t) => s + Number(t.amount), 0);
+  const fPaid = list.filter((t) => t.paid).reduce((s, t) => s + Number(t.amount), 0);
+  const fUnpaid = fTotal - fPaid;
+  const years = [...new Set(all.map((t) => t.tx_date.slice(0, 4)))].sort().reverse();
+  if (!years.length) years.push(String(new Date().getFullYear()));
 
   const rows = list.map((t) => {
     const cat = catOf(t.category);
@@ -514,6 +529,25 @@ function renderDetail() {
     </div>`;
   }).join("");
 
+  // การ์ดทุกใบใน carousel — ปัดเพื่อสลับบัตร
+  const carouselHtml = cards.map((c) => {
+    const cAll = txs.filter((t) => t.card_id === c.id);
+    const cTotal = cAll.reduce((s, t) => s + Number(t.amount), 0);
+    const cUnpaid = cAll.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0);
+    return `
+    <div class="cc" data-cid="${c.id}" style="${cardStyle(c.color)}; cursor:default; flex:0 0 100%; scroll-snap-align:center; margin-bottom:8px;">
+      <div class="chip"></div>
+      <div class="name">${esc(c.name)}</div>
+      <div class="meta">${cAll.length} รายการ · ปัดซ้าย-ขวาเพื่อสลับบัตร</div>
+      <div class="row">
+        <div><div class="lbl">ยอดทั้งหมด</div><div class="amt">฿${money(cTotal)}</div></div>
+        <div style="text-align:right"><div class="lbl">ค้างจ่าย</div><div class="amt">฿${money(cUnpaid)}</div></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const statusChips = [["all", "ทั้งหมด"], ["paid", "จ่ายแล้ว"], ["unpaid", "ยังไม่จ่าย"]];
+
   app.innerHTML = `
     <div class="backrow">
       <button class="btn btn-ghost" onclick="backHome()">‹ กลับ</button>
@@ -521,26 +555,66 @@ function renderDetail() {
       <button class="btn btn-ghost btn-sm" onclick="openCardModal('${card.id}')">แก้ไขบัตร</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="delCard('${card.id}')">ลบบัตร</button>
     </div>
-    <div class="cc" style="${cardStyle(card.color)}; cursor:default">
-      <div class="chip"></div>
-      <div class="name">${esc(card.name)}</div>
-      <div class="meta">${list.length} รายการ</div>
-      <div class="row">
-        <div><div class="lbl">ยอดทั้งหมด</div><div class="amt">฿${money(total)}</div></div>
-        <div style="text-align:right"><div class="lbl">ค้างจ่าย</div><div class="amt">฿${money(unpaid)}</div></div>
+    <div id="detCar" style="display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; margin:0 -16px; padding:0 16px; scrollbar-width:none;">
+      ${carouselHtml}
+    </div>
+    ${cards.length > 1 ? `<div style="display:flex; justify-content:center; gap:6px; margin-bottom:10px;">
+      ${cards.map((c, i) => `<span style="width:${i === idx ? 18 : 7}px; height:7px; border-radius:99px; background:${i === idx ? "var(--accent)" : "var(--line)"}; transition:.3s;"></span>`).join("")}
+    </div>` : `<div style="margin-bottom:6px;"></div>`}
+    ${unpaidCnt > 0 ? `<button class="btn btn-green btn-block payall" onclick="openPayModal('${card.id}')">💳 จ่ายบิล (ค้าง ${unpaidCnt} รายการ · ฿${money(unpaid)})</button>` : ""}
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0 8px;">
+      <div class="field" style="margin:0;">
+        <select onchange="setDetYear(this.value)" style="font-weight:500; ${detYear !== "all" ? "border-color:var(--accent); color:var(--accent);" : ""}">
+          <option value="all" ${detYear === "all" ? "selected" : ""}>ทุกปี</option>
+          ${years.map((y) => `<option value="${y}" ${detYear === y ? "selected" : ""}>ปี ${Number(y) + 543}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field" style="margin:0;">
+        <select onchange="setDetMonth(this.value)" style="font-weight:500; ${detMonth !== "all" ? "border-color:var(--accent); color:var(--accent);" : ""}">
+          <option value="all" ${detMonth === "all" ? "selected" : ""}>ทุกเดือน</option>
+          ${TH_MONTHS.map((m, i) => { const v = String(i + 1).padStart(2, "0"); return `<option value="${v}" ${detMonth === v ? "selected" : ""}>${m}</option>`; }).join("")}
+        </select>
       </div>
     </div>
-    ${unpaidCnt > 0 ? `<button class="btn btn-green btn-block payall" onclick="openPayModal('${card.id}')">💳 จ่ายบิล (ค้าง ${unpaidCnt} รายการ · ฿${money(unpaid)})</button>` : ""}
-    <div class="toolbar" style="margin-top:10px">
+    <div class="catpick" style="margin-bottom:12px;">
+      ${statusChips.map(([k, l]) => `<button type="button" class="cp ${detStatus === k ? "sel" : ""}" onclick="setDetStatus('${k}')">${l}</button>`).join("")}
+    </div>
+    <div class="summary" style="grid-template-columns:1fr 1fr; margin-bottom:12px;">
+      <div class="sumbox"><div class="t">ยอดรวม</div><div class="v">฿${money(fTotal)}</div></div>
+      <div class="sumbox"><div class="t">จำนวนรายการ</div><div class="v">${list.length}</div></div>
+      <div class="sumbox"><div class="t">จ่ายแล้ว</div><div class="v green">฿${money(fPaid)}</div></div>
+      <div class="sumbox"><div class="t">ค้างจ่าย</div><div class="v ${fUnpaid > 0 ? "red" : "green"}">฿${money(fUnpaid)}</div></div>
+    </div>
+
+    <div class="toolbar" style="margin-top:2px">
       <button class="btn btn-soft btn-sm" onclick="toggleSort()">⇅ เรียง: ${sortDesc ? "ใหม่ → เก่า" : "เก่า → ใหม่"}</button>
       <button class="btn btn-soft btn-sm" onclick="exportCSV('${card.id}')">⬇ ส่งออก CSV บัตรนี้</button>
     </div>
     <div class="txlist">
-      ${rows || `<div class="empty"><div class="big">🧾</div>ยังไม่มีรายการ<br>กดปุ่ม + เพื่อจดรายการ</div>`}
+      ${rows || `<div class="empty"><div class="big">🧾</div>ไม่มีรายการในช่วงที่เลือก<br>ลองเปลี่ยนตัวกรอง หรือกดปุ่ม + เพื่อจดรายการ</div>`}
     </div>
     <button class="fab" onclick="openTxModal()" title="จดรายการ">+</button>
     ${modalHtml()}`;
+
+  // ตั้งตำแหน่ง carousel ให้ตรงบัตรปัจจุบัน แล้วฟังการปัดเพื่อสลับบัตร
+  const car = $("detCar");
+  if (car) {
+    const step = () => (car.firstElementChild ? car.firstElementChild.offsetWidth + 12 : car.clientWidth || 1);
+    requestAnimationFrame(() => { car.scrollLeft = idx * step(); });
+    let scT = 0;
+    car.addEventListener("scroll", () => {
+      clearTimeout(scT);
+      scT = setTimeout(() => {
+        const i = Math.min(cards.length - 1, Math.max(0, Math.round(car.scrollLeft / step())));
+        if (cards[i] && cards[i].id !== view.cardId) { view.cardId = cards[i].id; expandedTx = null; render(); }
+      }, 150);
+    }, { passive: true });
+  }
 }
+window.setDetYear = (v) => { detYear = v; render(); };
+window.setDetMonth = (v) => { detMonth = v; render(); };
+window.setDetStatus = (v) => { detStatus = v; render(); };
 
 /* ---------- summary ---------- */
 window.openSummary = () => { view = { name: "summary", cardId: null }; render(); };
@@ -750,7 +824,7 @@ async function saveTx(e) {
 }
 
 /* ---------- actions ---------- */
-window.openCard = (id) => { view = { name: "detail", cardId: id }; expandedTx = null; render(); };
+window.openCard = (id) => { view = { name: "detail", cardId: id }; expandedTx = null; detYear = detMonth = detStatus = "all"; render(); };
 window.backHome = () => { view = { name: "cards", cardId: null }; expandedTx = null; render(); };
 window.logout = async () => { await sb.auth.signOut(); };
 
